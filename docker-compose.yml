@@ -1,0 +1,26 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: punchclock_db
+    environment:
+      POSTGRES_USER: punchclock
+      POSTGRES_PASSWORD: punchclock_dev_password
+      POSTGRES_DB: punchclock_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - punchclock_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U punchclock"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+
+networks:
+  punchclock_network:
+    driver: bridge

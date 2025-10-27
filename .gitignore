@@ -1,0 +1,68 @@
+## .NET
+bin/
+obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+.vs/
+*.swp
+*.bak
+
+## Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+[Ww][Ii][Nn]32/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+## Visual Studio cache/options
+.vs/
+.vscode/
+
+## Rider
+.idea/
+*.sln.iml
+
+## User-specific files
+*.userprefs
+*.pidb
+*.booproj
+
+## Database
+*.db
+*.db-shm
+*.db-wal
+
+## Environment
+.env
+.env.local
+appsettings.*.json
+!appsettings.Development.json
+!appsettings.Testing.json
+
+## OS
+.DS_Store
+Thumbs.db
+
+## Docker
+*.log
+nohup.out
+
+## Test Coverage
+coverage/
+TestResults/
+*.trx
+
+## Temp files
+*.tmp
+*~
