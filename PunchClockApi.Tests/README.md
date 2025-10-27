@@ -68,43 +68,53 @@ dotnet test
 
 ## Test Coverage
 
-### Authentication (9 tests)
+### Authentication (8 tests)
 - ✅ Health check without authentication
 - ✅ Protected endpoints require authentication
 - ✅ Login with valid credentials
 - ✅ Login with invalid credentials
 - ✅ Get current user info
-- ✅ Access endpoints with valid token
+- ✅ Access staff endpoint with valid token
 - ✅ User registration
 - ✅ List users (admin only)
 
 ### Query Options (20 tests)
-- ✅ Pagination structure validation
-- ✅ Page and limit parameters
+- ✅ Pagination structure validation (page, limit, total, data)
+- ✅ Page and limit parameters respected
+- ✅ Page 2 returns correct page number
 - ✅ Default page handling (page 0 → page 1)
-- ✅ Sorting by various fields (ascending/descending)
-- ✅ Invalid sort field handling
-- ✅ Include/eager loading (Department, Location)
-- ✅ Multiple includes
-- ✅ Filtering by field values
-- ✅ Empty filter results
-- ✅ Combined query options
-- ✅ Pagination on all endpoints (Staff, Devices, Attendance, Departments, Locations)
+- ✅ Sorting by first name ascending
+- ✅ Sorting by last name descending
+- ✅ Invalid sort field handling (graceful fallback)
+- ✅ Include Department relation (eager loading)
+- ✅ Include Location relation (eager loading)
+- ✅ Multiple includes (Department + Location)
+- ✅ Empty include parameter handling
+- ✅ Filter by first name (case-insensitive)
+- ✅ Filter with no matches returns empty array
+- ✅ Combined pagination + sorting
+- ✅ Combined pagination + include
+- ✅ Combined filter + sort + limit
+- ✅ Pagination on Devices endpoint
+- ✅ Pagination on Attendance Logs endpoint
+- ✅ Pagination on Departments endpoint
+- ✅ Pagination on Locations endpoint
 
-### API Endpoints (13 tests)
-- ✅ Create Department
-- ✅ Create Location
-- ✅ Create Staff
+### API Endpoints (12 tests)
+- ✅ Health check returns healthy status
+- ✅ Create Department with valid data
+- ✅ Create Location with valid data
+- ✅ Create Staff with valid data
 - ✅ Get all Staff
 - ✅ Get Staff by ID
-- ✅ Create Device
+- ✅ Create Device with valid data
 - ✅ Get all Devices
-- ✅ Create Punch Log
+- ✅ Create Punch Log with valid data
 - ✅ Get Attendance Logs
 - ✅ Get all Departments
 - ✅ Get all Locations
 
-**Total: 42 tests** (migrated from 3 bash scripts)
+**Total: 40 tests** (migrated from 3 bash scripts)
 
 ## Key Features
 

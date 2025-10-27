@@ -1,17 +1,19 @@
 # Punch Clock API
 
-A C# .NET minimal API backend for punch clock and attendance synchronization with ZKTeco devices.
+A .NET 9.0 Web API backend for biometric punch clock synchronization and attendance management with ZKTeco devices.
 
 ## Features
 
-- ✅ **Staff Management** - CRUD operations for employee records
-- ✅ **Device Management** - Manage biometric punch clock devices
-- ✅ **Attendance Tracking** - Punch logs and attendance records
-- ✅ **Biometric Templates** - Store and manage fingerprint/face data
-- ✅ **Department & Location Management** - Organizational structure
-- ✅ **Audit Logging** - Complete audit trail
-- ✅ **EF Core with PostgreSQL** - Modern ORM with robust database
-- ✅ **Swagger Documentation** - Interactive API documentation
+- ✅ **JWT Authentication** - Token-based authentication with role-based access control
+- ✅ **Staff Management** - CRUD operations for employee records with biometric enrollment
+- ✅ **Device Management** - Manage biometric punch clock devices across multiple locations
+- ✅ **Attendance Tracking** - Punch logs and attendance records with date filtering
+- ✅ **Biometric Templates** - Store and manage fingerprint/face templates
+- ✅ **Department & Location Management** - Organizational hierarchy support
+- ✅ **Advanced Query Options** - Pagination, sorting, filtering, and eager loading
+- ✅ **EF Core with PostgreSQL** - Modern ORM with snake_case conventions
+- ✅ **Comprehensive Testing** - 40 integration tests with in-memory database
+- ✅ **Swagger Documentation** - Interactive API documentation with JWT support
 
 ## Prerequisites
 
@@ -48,57 +50,97 @@ dotnet ef database update
 dotnet run
 ```
 
-The API will start on `https://localhost:5001` (or `http://localhost:5000`)
+The API will start on `http://localhost:5187` (or check console output for actual port)
 
 ### 5. Access Swagger UI
 
-Navigate to: `https://localhost:5001/swagger`
+Navigate to: `http://localhost:5187/swagger`
+
+### 6. Login to Get JWT Token
+
+Use Swagger or send a POST request to `/api/auth/login`:
+```json
+{
+  "username": "admin",
+  "password": "admin123"
+}
+```
+
+Copy the `accessToken` from the response and click "Authorize" in Swagger UI, then enter: `Bearer <your-token>`
 
 ## Project Structure
 
 ```
 PunchClockApi/
+├── Controllers/
+│   ├── AuthController.cs           # Authentication endpoints (login, register)
+│   ├── StaffController.cs          # Staff CRUD operations
+│   ├── DevicesController.cs        # Device management
+│   ├── AttendanceController.cs     # Punch logs and attendance records
+│   ├── OrganizationController.cs   # Departments and locations
+│   ├── UsersController.cs          # User management
+│   ├── SystemController.cs         # Health check
+│   └── BaseController.cs           # Shared controller logic
 ├── Data/
-│   └── PunchClockDbContext.cs      # EF Core DbContext
+│   ├── PunchClockDbContext.cs      # EF Core DbContext with fluent configuration
+│   └── DatabaseSeeder.cs           # Development data seeding
 ├── Models/
-│   ├── User.cs                     # User & Auth entities
+│   ├── User.cs                     # User, Role, Permission entities
 │   ├── Organization.cs             # Department & Location
-│   ├── Staff.cs                    # Staff & Biometric
-│   ├── Device.cs                   # Device & Enrollment
-│   ├── Attendance.cs               # Punch logs & Records
-│   └── Audit.cs                    # Sync, Audit, Export logs
-└── Program.cs                      # Minimal API configuration
+│   ├── Staff.cs                    # Staff & BiometricTemplate
+│   ├── Device.cs                   # Device & DeviceEnrollment
+│   ├── Attendance.cs               # PunchLog & AttendanceRecord
+│   └── Audit.cs                    # SyncLog, AuditLog, ExportLog
+├── Migrations/                     # EF Core migrations
+└── Program.cs                      # API configuration and startup
 ```
 
 ## API Endpoints
 
-### Staff
-- `GET /api/staff` - Get all active staff
-- `GET /api/staff/{id}` - Get staff by ID
+### Authentication (Public)
+- `POST /api/auth/login` - Login with username/password
+- `POST /api/auth/register` - Register new user
+- `GET /api/auth/me` - Get current user info (requires auth)
+
+### Staff (Requires Authentication)
+- `GET /api/staff` - Get all active staff (supports pagination, sorting, filtering, includes)
+- `GET /api/staff/{id}` - Get staff by ID with relationships
 - `POST /api/staff` - Create new staff
 - `PUT /api/staff/{id}` - Update staff
-- `DELETE /api/staff/{id}` - Soft delete staff
+- `DELETE /api/staff/{id}` - Soft delete staff (sets IsActive = false)
 
-### Devices
-- `GET /api/devices` - Get all active devices
+### Devices (Requires Authentication)
+- `GET /api/devices` - Get all active devices (supports query options)
 - `GET /api/devices/{id}` - Get device by ID
 - `POST /api/devices` - Register new device
 - `PUT /api/devices/{id}` - Update device
 - `POST /api/devices/{id}/sync` - Trigger device sync
 
-### Attendance
-- `GET /api/attendance/logs` - Get punch logs (with filters)
+### Attendance (Requires Authentication)
+- `GET /api/attendance/logs` - Get punch logs with date/staff/device filters
 - `GET /api/attendance/records` - Get attendance records
 - `POST /api/attendance/logs` - Create punch log
 
-### Organization
-- `GET /api/departments` - Get all departments
+### Organization (Requires Authentication)
+- `GET /api/departments` - Get all departments (supports query options)
 - `POST /api/departments` - Create department
-- `GET /api/locations` - Get all locations
+- `GET /api/locations` - Get all locations (supports query options)
 - `POST /api/locations` - Create location
 
-### System
+### Users (Requires Authentication)
+- `GET /api/users` - Get all users (admin only)
+
+### System (Public)
 - `GET /api/health` - Database health check
+
+### Query Parameters
+Most list endpoints support:
+- `page` - Page number (default: 1)
+- `limit` - Items per page (default: 50)
+- `sort` - Sort field (e.g., "FirstName", "LastName")
+- `order` - Sort order ("asc" or "desc")
+- `include` - Eager load relationships (e.g., "Department,Location")
+- Field-specific filters (e.g., `isActive=true`, `firstName=John`)
 
 ## Database Configuration
 
@@ -156,40 +198,79 @@ docker-compose logs -f postgres
 docker-compose down -v
 ```
 
+## Testing
+
+The project includes comprehensive integration tests using xUnit, FluentAssertions, and in-memory database.
+
+### Run All Tests
+```bash
+cd PunchClockApi.Tests
+dotnet test
+```
+
+### Run Specific Test Class
+```bash
+dotnet test --filter "FullyQualifiedName~AuthenticationTests"
+dotnet test --filter "FullyQualifiedName~QueryOptionsTests"
+dotnet test --filter "FullyQualifiedName~ApiEndpointTests"
+```
+
+### Test Coverage
+- **40 integration tests** covering authentication, query options, and API endpoints
+- In-memory database for fast, isolated testing
+- No external dependencies required
+- See `PunchClockApi.Tests/README.md` for detailed test documentation
+
 ## Development Notes
 
-### Minimal API Style
-This project uses .NET minimal APIs for a succinct, modern approach:
-- No controllers - endpoints defined inline
-- Reduced boilerplate
-- Direct dependency injection in route handlers
-- Automatic model binding
+### Controller-Based Architecture
+This project uses ASP.NET Core controllers with attribute routing:
+- `[ApiController]` attribute for automatic model validation
+- `[Route]` attribute for endpoint routing
+- Shared `BaseController<T>` class for common query parsing
+- Constructor dependency injection
+- JWT authentication with role-based authorization
 
 ### Database Schema
 The schema includes:
-- **Users & RBAC** - Role-based access control
-- **Staff Management** - Employee records with biometric data
-- **Device Management** - Punch clock device registry
-- **Attendance Tracking** - Raw logs and processed records
-- **Audit Trail** - Complete system audit logging
+- **Users & RBAC** - Role-based access control with User, Role, Permission entities
+- **Staff Management** - Employee records with biometric templates and device enrollments
+- **Device Management** - Punch clock device registry with location assignments
+- **Attendance Tracking** - PunchLog (raw data) and AttendanceRecord (processed daily summaries)
+- **Organization** - Department hierarchy and location management
+- **Audit Trail** - SyncLog, AuditLog, and ExportLog for complete traceability
 
 ### Conventions
-- Snake_case for database columns (PostgreSQL convention)
-- PascalCase for C# properties
-- UUIDs for primary keys
-- Soft deletes with `IsActive` flags
-- Automatic timestamps with EF Core
+- **Snake_case** for database columns (PostgreSQL convention) via `.HasColumnName()`
+- **PascalCase** for C# properties
+- **UUIDs** (`Guid`) for all primary keys with `gen_random_uuid()` default
+- **Soft deletes** with `IsActive` flags (no hard deletes)
+- **Audit fields** on most tables: `created_at`, `updated_at`, `created_by`, `updated_by`
+- **Fluent API** configuration only - no data annotations on models
+- **JSONB** columns for flexible data (device_config, validation_errors, anomaly_flags)
+
+## Database Seeding
+
+The API automatically seeds the database with sample data in Development environment:
+- Controlled by `appsettings.Development.json`: `"Database": { "SeedDatabase": true }`
+- Creates sample users (admin/admin123), departments, locations, staff, devices
+- Generates 7 days of punch log data for testing
+- Only runs if database is empty
+
+To disable seeding, set `"SeedDatabase": false` in configuration.
 
 ## Next Steps
 
-1. ✅ Implement authentication/authorization (JWT)
-2. ✅ Add device integration service (PYZK API client)
-3. ✅ Implement attendance processing logic
-4. ✅ Add reporting endpoints
-5. ✅ Set up background jobs for device sync
-6. ✅ Add validation & error handling middleware
-7. ✅ Implement unit tests
+- 🔄 **Device Integration Service** - ZKTeco SDK client for real device synchronization
+- 🔄 **Attendance Processing** - Background job to process PunchLogs → AttendanceRecords
+- 🔄 **Reporting Endpoints** - Export attendance data (CSV, Excel) for payroll
+- 🔄 **Background Jobs** - Hangfire/Quartz for scheduled device sync
+- 🔄 **Enhanced Validation** - FluentValidation for input validation
+- 🔄 **Global Error Handler** - Middleware for consistent error responses
+- ✅ **Authentication & Authorization** - JWT with User/Role/Permission
+- ✅ **Comprehensive Testing** - 40 integration tests with in-memory database
+- ✅ **Advanced Query Options** - Pagination, sorting, filtering, includes
 
 ## License
 
-MIT
+Proprietary
