@@ -79,6 +79,15 @@ public interface IDeviceService
     /// <param name="device">Device entity</param>
     /// <returns>True if device is reachable</returns>
     Task<bool> TestConnectionAsync(Device device);
+
+    /// <summary>
+    /// Initiates fingerprint enrollment for a user on a device
+    /// </summary>
+    /// <param name="device">Device entity</param>
+    /// <param name="staff">Staff entity to enroll</param>
+    /// <param name="fingerId">Finger index (0-9)</param>
+    /// <returns>Operation response</returns>
+    Task<OperationResponse> EnrollUserFingerprintAsync(Device device, Staff staff, int fingerId = 0);
 }
 
 /// <summary>

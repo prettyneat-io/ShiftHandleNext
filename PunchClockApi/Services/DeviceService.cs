@@ -658,6 +658,119 @@ public sealed class DeviceService : IDeviceService, IDisposable
         }
     }
 
+    public async Task<OperationResponse> EnrollUserFingerprintAsync(Device device, Staff staff, int fingerId = 0)
+    {
+        try
+        {
+            var client = GetOrCreateClient(device);
+            
+            // Ensure connected
+            var (success, error) = await EnsureConnectedAsync(client, device.DeviceId);
+            if (!success)
+            {
+                return new OperationResponse
+                {
+                    Success = false,
+                    Error = $"Failed to connect: {error}"
+                };
+            }
+
+            // Get or create enrollment
+            var enrollment = await _db.DeviceEnrollments
+                .FirstOrDefaultAsync(de => de.StaffId == staff.StaffId && de.DeviceId == device.DeviceId);
+
+            // User must exist on device before fingerprint enrollment
+            if (enrollment == null)
+            {
+                // Add user to device first
+                var addUserResult = await AddUserToDeviceAsync(device, staff);
+                if (!addUserResult.Success)
+                {
+                    return new OperationResponse
+                    {
+                        Success = false,
+                        Error = $"Failed to add user to device: {addUserResult.Error}"
+                    };
+                }
+
+                // Fetch the enrollment record that was just created
+                enrollment = await _db.DeviceEnrollments
+                    .FirstOrDefaultAsync(de => de.StaffId == staff.StaffId && de.DeviceId == device.DeviceId);
+            }
+
+            if (enrollment == null)
+            {
+                return new OperationResponse
+                {
+                    Success = false,
+                    Error = "Failed to create device enrollment"
+                };
+            }
+
+            // Start enrollment process - device will prompt user to scan finger 3 times
+            var result = await Task.Run(() => client.EnrollUser(
+                uid: enrollment.DeviceUserId ?? 0,
+                tempId: fingerId,
+                userId: staff.EmployeeId
+            ));
+
+            if (result.Success)
+            {
+                // Update staff enrollment status
+                staff.EnrollmentStatus = "COMPLETED";
+                staff.UpdatedAt = DateTime.UtcNow;
+
+                // Create or update biometric template record
+                var existingTemplate = await _db.BiometricTemplates
+                    .FirstOrDefaultAsync(bt => 
+                        bt.StaffId == staff.StaffId && 
+                        bt.DeviceId == device.DeviceId && 
+                        bt.FingerIndex == fingerId);
+
+                if (existingTemplate == null)
+                {
+                    var template = new BiometricTemplate
+                    {
+                        TemplateId = Guid.NewGuid(),
+                        StaffId = staff.StaffId,
+                        DeviceId = device.DeviceId,
+                        TemplateType = "FINGERPRINT",
+                        FingerIndex = fingerId,
+                        EnrolledAt = DateTime.UtcNow,
+                        IsActive = true,
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    };
+                    _db.BiometricTemplates.Add(template);
+                }
+                else
+                {
+                    existingTemplate.EnrolledAt = DateTime.UtcNow;
+                    existingTemplate.IsActive = true;
+                    existingTemplate.UpdatedAt = DateTime.UtcNow;
+                }
+
+                await _db.SaveChangesAsync();
+
+                _logger.LogInformation(
+                    "Fingerprint enrollment completed for staff {StaffId} on device {DeviceId}, finger {FingerId}",
+                    staff.StaffId, device.DeviceId, fingerId);
+            }
+
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to enroll fingerprint for staff {StaffId} on device {DeviceId}", 
+                staff.StaffId, device.DeviceId);
+            return new OperationResponse
+            {
+                Success = false,
+                Error = ex.Message
+            };
+        }
+    }
+
     private PyZKClient GetOrCreateClient(Device device)
     {
         if (string.IsNullOrEmpty(device.IpAddress))

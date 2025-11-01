@@ -321,4 +321,53 @@ public sealed class DevicesController : BaseController<Device>
             return HandleError(ex);
         }
     }
+
+    [HttpPost("{deviceId:guid}/staff/{staffId:guid}/enroll-fingerprint")]
+    public async Task<IActionResult> EnrollStaffFingerprint(
+        Guid deviceId, 
+        Guid staffId,
+        [FromQuery] int fingerId = 0)
+    {
+        try
+        {
+            if (fingerId < 0 || fingerId > 9)
+            {
+                return BadRequest(new { error = "Finger ID must be between 0 and 9" });
+            }
+
+            var device = await _db.Devices.FindAsync(deviceId);
+            if (device is null) return NotFound("Device not found");
+
+            var staff = await _db.Staff.FindAsync(staffId);
+            if (staff is null) return NotFound("Staff not found");
+
+            var result = await _deviceService.EnrollUserFingerprintAsync(device, staff, fingerId);
+            
+            if (result.Success)
+            {
+                return Ok(new
+                {
+                    success = true,
+                    message = result.Message,
+                    deviceId,
+                    staffId,
+                    fingerId,
+                    instructions = "User should scan their finger on the device 3 times when prompted"
+                });
+            }
+
+            return BadRequest(new
+            {
+                success = false,
+                error = result.Error,
+                deviceId,
+                staffId,
+                fingerId
+            });
+        }
+        catch (Exception ex)
+        {
+            return HandleError(ex);
+        }
+    }
 }
