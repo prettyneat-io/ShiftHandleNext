@@ -7,6 +7,7 @@ It handles common operations and provides better error handling for interop scen
 """
 
 import json
+import sys
 from datetime import datetime
 from typing import List, Dict, Optional, Any
 import sys
@@ -68,15 +69,20 @@ class PyZKWrapper:
             self.conn = self.zk.connect()
             self._is_connected = True
             
-            # Get basic device info
+            # Get basic device info - ensure all values are strings (not None)
+            firmware_version = self.conn.get_firmware_version() or ""
+            serial_number = self.conn.get_serialnumber() or ""
+            platform = self.conn.get_platform() or ""
+            device_name = self.conn.get_device_name() or ""
+            
             return {
                 "success": True,
                 "message": "Connected successfully",
                 "device_info": {
-                    "firmware_version": self.conn.get_firmware_version(),
-                    "serial_number": self.conn.get_serialnumber(),
-                    "platform": self.conn.get_platform(),
-                    "device_name": self.conn.get_device_name()
+                    "firmware_version": firmware_version,
+                    "serial_number": serial_number,
+                    "platform": platform,
+                    "device_name": device_name
                 }
             }
         except Exception as e:
@@ -259,25 +265,31 @@ class PyZKWrapper:
             return json.dumps({"success": False, "error": "Not connected to device"})
         
         try:
+            # Get device capacity first
+            self.conn.read_sizes()
+            
+            # Get all device info
+            firmware_version = self.conn.get_firmware_version() or ""
+            serial_number = self.conn.get_serialnumber() or ""
+            platform = self.conn.get_platform() or ""
+            device_name = self.conn.get_device_name() or ""
+            mac_address = self.conn.get_mac() or ""
+            device_time = self.conn.get_time()
+            
             info = {
                 "success": True,
-                "firmware_version": self.conn.get_firmware_version(),
-                "serial_number": self.conn.get_serialnumber(),
-                "platform": self.conn.get_platform(),
-                "device_name": self.conn.get_device_name(),
-                "mac_address": self.conn.get_mac(),
-                "device_time": self.conn.get_time().isoformat() if self.conn.get_time() else None,
+                "firmware_version": firmware_version,
+                "serial_number": serial_number,
+                "platform": platform,
+                "device_name": device_name,
+                "mac_address": mac_address,
+                "device_time": device_time.isoformat() if device_time else None,
+                "users_count": self.conn.users or 0,
+                "users_capacity": self.conn.users_cap or 0,
+                "fingerprints_count": self.conn.fingers or 0,
+                "fingerprints_capacity": self.conn.fingers_cap or 0,
+                "records_count": self.conn.records or 0
             }
-            
-            # Get device capacity
-            self.conn.read_sizes()
-            info.update({
-                "users_count": self.conn.users,
-                "users_capacity": self.conn.users_cap,
-                "fingerprints_count": self.conn.fingers,
-                "fingerprints_capacity": self.conn.fingers_cap,
-                "records_count": self.conn.records
-            })
             
             return json.dumps(info)
         except Exception as e:

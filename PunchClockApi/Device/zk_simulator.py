@@ -95,9 +95,9 @@ class ZKSimulator:
         # User data - simulate some basic users
         self.users = [
             # uid, privilege, password, name, card, group_id, user_id
-            (1, 0, b'', b'Admin', 0, 0, 1),
-            (2, 0, b'12345', b'User001', 123456, 0, 2),
-            (3, 0, b'', b'User002', 234567, 0, 3),
+            (1, 14, b'', b'Admin', 0, 0, '1'),  # 14 = admin privilege
+            (2, 0, b'12345', b'User001', 123456, 0, '2'),
+            (3, 0, b'', b'User002', 234567, 0, '3'),
         ]
         
         # Fingerprint templates - (uid, fid, valid, template_data)
@@ -513,35 +513,14 @@ class ZKSimulator:
         """Handle user write request - set or update user"""
         print("  -> Handling CMD_USER_WRQ (set user)")
         
-        # Parse user data based on packet size
-        if len(data) >= 28:
-            # ZK6 format (28 bytes)
-            uid, privilege, password, name, card, group_id, tz, user_id = struct.unpack('<HB5s8sIxBHI', data[:28])
-            password = password.rstrip(b'\x00')
-            name = name.rstrip(b'\x00')
-            print(f"     User: uid={uid}, name={name}, privilege={privilege}")
-            
-            # Update or add user
-            user_found = False
-            new_users = []
-            for u in self.users:
-                if u[0] == uid:  # uid match
-                    new_users.append((uid, privilege, password, name, card, group_id, user_id))
-                    user_found = True
-                else:
-                    new_users.append(u)
-            
-            if not user_found:
-                new_users.append((uid, privilege, password, name, card, group_id, user_id))
-            
-            self.users = new_users
-            self.users_count = len(self.users)
-        elif len(data) >= 72:
+        # Parse user data based on packet size - check 72-byte format FIRST
+        if len(data) >= 72:
             # ZK8 format (72 bytes)
             uid, privilege, password, name, card, group_id, user_id = struct.unpack('<HB8s24sIx7sx24s', data[:72])
             password = password.rstrip(b'\x00')
             name = name.rstrip(b'\x00')
-            user_id_str = user_id.rstrip(b'\x00')
+            user_id_str = user_id.rstrip(b'\x00').decode('utf-8', errors='ignore')
+            group_id_str = group_id.rstrip(b'\x00').decode('utf-8', errors='ignore')
             print(f"     User: uid={uid}, name={name}, privilege={privilege}, user_id={user_id_str}")
             
             # Update or add user
@@ -549,13 +528,37 @@ class ZKSimulator:
             new_users = []
             for u in self.users:
                 if u[0] == uid:
-                    new_users.append((uid, privilege, password, name, card, 0, int(user_id_str) if user_id_str.isdigit() else uid))
+                    new_users.append((uid, privilege, password, name, card, group_id_str or '0', user_id_str or str(uid)))
                     user_found = True
                 else:
                     new_users.append(u)
             
             if not user_found:
-                new_users.append((uid, privilege, password, name, card, 0, int(user_id_str) if user_id_str.isdigit() else uid))
+                new_users.append((uid, privilege, password, name, card, group_id_str or '0', user_id_str or str(uid)))
+            
+            self.users = new_users
+            self.users_count = len(self.users)
+        elif len(data) >= 28:
+            # ZK6 format (28 bytes) - fallback for older devices
+            uid, privilege, password, name, card, group_id, tz, user_id = struct.unpack('<HB5s8sIxBHI', data[:28])
+            password = password.rstrip(b'\x00')
+            name = name.rstrip(b'\x00')
+            user_id_str = str(user_id)  # Integer user_id in ZK6 format
+            group_id_str = str(group_id)
+            print(f"     User (ZK6): uid={uid}, name={name}, privilege={privilege}, user_id={user_id_str}")
+            
+            # Update or add user
+            user_found = False
+            new_users = []
+            for u in self.users:
+                if u[0] == uid:  # uid match
+                    new_users.append((uid, privilege, password, name, card, group_id_str, user_id_str))
+                    user_found = True
+                else:
+                    new_users.append(u)
+            
+            if not user_found:
+                new_users.append((uid, privilege, password, name, card, group_id_str, user_id_str))
             
             self.users = new_users
             self.users_count = len(self.users)

@@ -735,10 +735,33 @@ public sealed class DeviceService : IDeviceService, IDisposable
 
     private async Task<int> GetNextDeviceUserId(Guid deviceId)
     {
-        var maxUserId = await _db.DeviceEnrollments
+        // First, query the device to get the max UID currently in use
+        var device = await _db.Devices.FindAsync(deviceId);
+        if (device == null)
+        {
+            throw new InvalidOperationException($"Device {deviceId} not found");
+        }
+
+        int maxDeviceUid = 0;
+        try
+        {
+            var usersResponse = await GetUsersAsync(device);
+            if (usersResponse.Success && usersResponse.Users.Any())
+            {
+                maxDeviceUid = usersResponse.Users.Max(u => u.Uid);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to query users from device {DeviceId}, falling back to database only", deviceId);
+        }
+
+        // Also check database for any enrollments we've tracked
+        var maxDbUid = await _db.DeviceEnrollments
             .Where(de => de.DeviceId == deviceId)
             .MaxAsync(de => (int?)de.DeviceUserId) ?? 0;
 
-        return maxUserId + 1;
+        // Return the maximum of both plus 1
+        return Math.Max(maxDeviceUid, maxDbUid) + 1;
     }
 }

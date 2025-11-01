@@ -30,6 +30,18 @@ This test project contains comprehensive integration tests that verify the API's
    - Attendance logs and punch records
    - Relationship handling
 
+4. **DeviceIntegrationTests** (`DeviceIntegrationTests.cs`)
+   - Device connection and disconnection
+   - Test connection functionality
+   - Get device information and capacity
+   - Retrieve users from device
+   - Retrieve attendance records from device
+   - Staff enrollment on device
+   - Sync staff to device
+   - Sync attendance from device
+   - Multiple connection cycles
+   - Uses real ZK simulator for authentic integration testing
+
 ### Infrastructure
 
 - **TestWebApplicationFactory**: Custom factory that configures in-memory database
@@ -48,6 +60,7 @@ dotnet test
 dotnet test --filter "FullyQualifiedName~AuthenticationTests"
 dotnet test --filter "FullyQualifiedName~QueryOptionsTests"
 dotnet test --filter "FullyQualifiedName~ApiEndpointTests"
+dotnet test --filter "FullyQualifiedName~DeviceIntegrationTests"
 ```
 
 ### Run specific test
@@ -114,9 +127,34 @@ dotnet test
 - ✅ Get all Departments
 - ✅ Get all Locations
 
-**Total: 40 tests** (migrated from 3 bash scripts)
+### Device Integration (13 tests)
+- ✅ Test connection with simulator returns connected
+- ✅ Connect to device with simulator returns success
+- ✅ Disconnect from device after connection returns success
+- ✅ Get device info with simulator returns detailed info
+- ✅ Get device users with simulator returns users list
+- ✅ Get device attendance with simulator returns attendance records
+- ✅ Enroll staff on device with valid staff returns success
+- ✅ Enroll staff on device with non-existent device returns not found
+- ✅ Enroll staff on device with non-existent staff returns not found
+- ✅ Sync staff to device with active staff creates enrollments
+- ✅ Sync attendance from device with existing data creates attendance logs
+- ✅ Sync device with invalid type defaults to attendance
+- ✅ Connect and disconnect sequence multiple times works correctly
+- ✅ Get device users after enrolling staff shows new user
+- ✅ Device info after enrollments reflects updated counts
+
+**Total: 53 tests** (migrated from 3 bash scripts + new device integration tests)
 
 ## Key Features
+
+### ZK Simulator for Device Tests
+Device integration tests use the Python-based ZK simulator (`zk_simulator.py`) for authentic testing:
+- Tests automatically start/stop the simulator process
+- Simulator responds to real ZKTeco protocol commands
+- Tests verify actual device communication, not mocked responses
+- Simulates device features: users, attendance, device info, enrollment
+- Runs on localhost:4370 (standard ZKTeco port)
 
 ### In-Memory Database
 Tests use EF Core's in-memory database provider, eliminating the need for:
@@ -145,6 +183,7 @@ These C# tests replace the following bash scripts:
 - `test-auth.sh` → `AuthenticationTests.cs`
 - `test-query-options.sh` → `QueryOptionsTests.cs`
 - `test-api.sh` → `ApiEndpointTests.cs`
+- New device integration tests → `DeviceIntegrationTests.cs`
 
 Benefits of C# tests over bash:
 - ✅ Type safety and compile-time checking
@@ -178,6 +217,17 @@ Tests are ready for CI/CD integration:
 - **FluentAssertions** (8.8.0) - Fluent assertion library
 - **xunit** (2.x) - Test framework
 - **xunit.runner.visualstudio** - Visual Studio test adapter
+- **Python 3** - Required for running ZK simulator during device integration tests
+
+## Requirements
+
+### For All Tests
+- .NET 9.0 SDK
+- No PostgreSQL required (uses in-memory database)
+
+### For Device Integration Tests Only
+- Python 3 installed and available in PATH as `python3`
+- ZK simulator Python dependencies (automatically included in test binaries)
 
 ## Project Structure
 
@@ -186,6 +236,7 @@ PunchClockApi.Tests/
 ├── AuthenticationTests.cs      # Auth flow tests
 ├── QueryOptionsTests.cs        # Query parameter tests
 ├── ApiEndpointTests.cs         # CRUD operation tests
+├── DeviceIntegrationTests.cs   # Device integration tests with ZK simulator
 ├── IntegrationTestBase.cs      # Base class for all tests
 ├── TestWebApplicationFactory.cs # Custom test factory
 ├── TestAuthHelper.cs           # Auth helper methods
@@ -223,7 +274,30 @@ To add new tests:
 
 ## Troubleshooting
 
-### Tests fail with "Program not found"
+### Device Integration Tests
+
+#### Python not found
+If device tests fail with "python3 not found":
+- Install Python 3: `sudo apt-get install python3` (Linux) or download from python.org
+- Ensure `python3` is in your PATH
+- On Windows, you may need to use `python` instead of `python3` (update test code)
+
+#### Simulator fails to start
+If simulator process fails:
+- Check that port 4370 is not already in use: `lsof -i :4370` (Linux/Mac)
+- Review test output for simulator error messages
+- Verify zk_simulator.py exists in Device folder
+- Check Python dependencies are installed
+
+#### Tests timeout or hang
+If device tests hang:
+- Simulator may not have started properly - check test output
+- Port 4370 may be blocked by firewall
+- Try running tests with increased verbosity: `dotnet test --logger "console;verbosity=detailed"`
+
+### General Tests
+
+#### Tests fail with "Program not found"
 Ensure `Program.cs` has the partial class declaration:
 ```csharp
 public partial class Program { }
