@@ -4,8 +4,19 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using PunchClockApi.Data;
+using PunchClockApi.Services;
+using PyZK.DotNet;
+using Python.Runtime;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Initialize Python.NET for device integration
+// Set Python DLL path for Linux
+if (OperatingSystem.IsLinux())
+{
+    Runtime.PythonDLL = "/usr/lib/x86_64-linux-gnu/libpython3.13.so.1.0";
+}
+PyZKClient.InitializePython();
 
 // Add services to the container
 builder.Services.AddControllers()
@@ -51,6 +62,9 @@ if (!builder.Environment.IsEnvironment("Testing"))
     builder.Services.AddDbContext<PunchClockDbContext>(options =>
         options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 }
+
+// Register application services
+builder.Services.AddScoped<IDeviceService, DeviceService>();
 
 // Configure JWT Authentication
 var jwtSecret = builder.Configuration["Jwt:Secret"] 
@@ -135,6 +149,14 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// Register shutdown handler to cleanup Python.NET
+// Note: Commented out due to BinaryFormatter deprecation in .NET 9
+// var lifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();
+// lifetime.ApplicationStopping.Register(() =>
+// {
+//     PyZKClient.ShutdownPython();
+// });
 
 app.Run();
 
