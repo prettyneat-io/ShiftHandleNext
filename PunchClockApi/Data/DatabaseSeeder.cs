@@ -31,6 +31,7 @@ public class DatabaseSeeder
 
             await SeedUsersAndRolesAsync();
             await SeedOrganizationsAsync();
+            await SeedShiftsAsync();
             await SeedStaffAsync();
             await SeedDevicesAsync();
             await SeedAttendanceDataAsync();
@@ -272,18 +273,116 @@ public class DatabaseSeeder
         _logger.LogInformation($"Seeded {departments.Count} departments and {locations.Count} locations.");
     }
 
+    private async Task SeedShiftsAsync()
+    {
+        _logger.LogInformation("Seeding shifts...");
+
+        var shifts = new List<Shift>
+        {
+            new Shift
+            {
+                ShiftId = Guid.NewGuid(),
+                ShiftName = "Morning Shift",
+                ShiftCode = "MORNING",
+                StartTime = new TimeOnly(8, 0),
+                EndTime = new TimeOnly(17, 0),
+                RequiredHours = TimeSpan.FromHours(8),
+                GracePeriodMinutes = 15,
+                LateThresholdMinutes = 15,
+                EarlyLeaveThresholdMinutes = 15,
+                HasBreak = true,
+                BreakDuration = TimeSpan.FromHours(1),
+                BreakStartTime = new TimeOnly(12, 0),
+                AutoDeductBreak = true,
+                IsActive = true,
+                Description = "Standard morning shift: 8:00 AM - 5:00 PM with 1 hour lunch break",
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+            new Shift
+            {
+                ShiftId = Guid.NewGuid(),
+                ShiftName = "Evening Shift",
+                ShiftCode = "EVENING",
+                StartTime = new TimeOnly(16, 0),
+                EndTime = new TimeOnly(0, 0),
+                RequiredHours = TimeSpan.FromHours(8),
+                GracePeriodMinutes = 15,
+                LateThresholdMinutes = 15,
+                EarlyLeaveThresholdMinutes = 15,
+                HasBreak = true,
+                BreakDuration = TimeSpan.FromMinutes(30),
+                BreakStartTime = new TimeOnly(20, 0),
+                AutoDeductBreak = true,
+                IsActive = true,
+                Description = "Evening shift: 4:00 PM - 12:00 AM with 30 minute break",
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+            new Shift
+            {
+                ShiftId = Guid.NewGuid(),
+                ShiftName = "Night Shift",
+                ShiftCode = "NIGHT",
+                StartTime = new TimeOnly(23, 0),
+                EndTime = new TimeOnly(7, 0),
+                RequiredHours = TimeSpan.FromHours(8),
+                GracePeriodMinutes = 15,
+                LateThresholdMinutes = 15,
+                EarlyLeaveThresholdMinutes = 15,
+                HasBreak = true,
+                BreakDuration = TimeSpan.FromMinutes(30),
+                BreakStartTime = new TimeOnly(3, 0),
+                AutoDeductBreak = true,
+                IsActive = true,
+                Description = "Night shift: 11:00 PM - 7:00 AM with 30 minute break",
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+            new Shift
+            {
+                ShiftId = Guid.NewGuid(),
+                ShiftName = "Flexible Shift",
+                ShiftCode = "FLEXIBLE",
+                StartTime = new TimeOnly(0, 0),
+                EndTime = new TimeOnly(23, 59),
+                RequiredHours = TimeSpan.FromHours(8),
+                GracePeriodMinutes = 30,
+                LateThresholdMinutes = 30,
+                EarlyLeaveThresholdMinutes = 30,
+                HasBreak = false,
+                AutoDeductBreak = false,
+                IsActive = true,
+                Description = "Flexible hours - staff can work any 8 hours within the day",
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            }
+        };
+
+        await _context.Shifts.AddRangeAsync(shifts);
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation($"Seeded {shifts.Count} shifts.");
+    }
+
     private async Task SeedStaffAsync()
     {
         _logger.LogInformation("Seeding staff members...");
 
         var departments = await _context.Departments.ToListAsync();
         var locations = await _context.Locations.ToListAsync();
+        var shifts = await _context.Shifts.ToListAsync();
 
         if (!departments.Any() || !locations.Any())
         {
             _logger.LogWarning("No departments or locations found. Skipping staff seeding.");
             return;
         }
+
+        // Get shift references (with fallback if no shifts exist yet)
+        var morningShift = shifts.FirstOrDefault(s => s.ShiftCode == "MORNING");
+        var eveningShift = shifts.FirstOrDefault(s => s.ShiftCode == "EVENING");
+        var nightShift = shifts.FirstOrDefault(s => s.ShiftCode == "NIGHT");
 
         var staff = new List<Staff>
         {
@@ -299,6 +398,7 @@ public class DatabaseSeeder
                 BadgeNumber = "EMP001",
                 DepartmentId = departments.First(d => d.DepartmentCode == "ENG").DepartmentId,
                 LocationId = locations.First(l => l.LocationCode == "HQ").LocationId,
+                ShiftId = morningShift?.ShiftId,
                 PositionTitle = "Senior Software Engineer",
                 EmploymentType = "FULL_TIME",
                 HireDate = DateTime.UtcNow.AddYears(-3).Date,
@@ -318,6 +418,7 @@ public class DatabaseSeeder
                 BadgeNumber = "EMP002",
                 DepartmentId = departments.First(d => d.DepartmentCode == "HR").DepartmentId,
                 LocationId = locations.First(l => l.LocationCode == "HQ").LocationId,
+                ShiftId = morningShift?.ShiftId,
                 PositionTitle = "HR Manager",
                 EmploymentType = "FULL_TIME",
                 HireDate = DateTime.UtcNow.AddYears(-5).Date,
@@ -337,6 +438,7 @@ public class DatabaseSeeder
                 BadgeNumber = "EMP003",
                 DepartmentId = departments.First(d => d.DepartmentCode == "SALES").DepartmentId,
                 LocationId = locations.First(l => l.LocationCode == "WC").LocationId,
+                ShiftId = morningShift?.ShiftId,
                 PositionTitle = "Sales Representative",
                 EmploymentType = "FULL_TIME",
                 HireDate = DateTime.UtcNow.AddYears(-2).Date,
@@ -356,6 +458,7 @@ public class DatabaseSeeder
                 BadgeNumber = "EMP004",
                 DepartmentId = departments.First(d => d.DepartmentCode == "ENG").DepartmentId,
                 LocationId = locations.First(l => l.LocationCode == "WC").LocationId,
+                ShiftId = eveningShift?.ShiftId,
                 PositionTitle = "DevOps Engineer",
                 EmploymentType = "FULL_TIME",
                 HireDate = DateTime.UtcNow.AddYears(-1).Date,
@@ -375,6 +478,7 @@ public class DatabaseSeeder
                 BadgeNumber = "EMP005",
                 DepartmentId = departments.First(d => d.DepartmentCode == "OPS").DepartmentId,
                 LocationId = locations.First(l => l.LocationCode == "WH").LocationId,
+                ShiftId = nightShift?.ShiftId,
                 PositionTitle = "Warehouse Supervisor",
                 EmploymentType = "FULL_TIME",
                 HireDate = DateTime.UtcNow.AddYears(-4).Date,
@@ -394,6 +498,7 @@ public class DatabaseSeeder
                 BadgeNumber = "EMP006",
                 DepartmentId = departments.First(d => d.DepartmentCode == "FIN").DepartmentId,
                 LocationId = locations.First(l => l.LocationCode == "HQ").LocationId,
+                ShiftId = morningShift?.ShiftId,
                 PositionTitle = "Financial Analyst",
                 EmploymentType = "FULL_TIME",
                 HireDate = DateTime.UtcNow.AddMonths(-8).Date,
@@ -412,6 +517,7 @@ public class DatabaseSeeder
                 BadgeNumber = "EMP007",
                 DepartmentId = departments.First(d => d.DepartmentCode == "OPS").DepartmentId,
                 LocationId = locations.First(l => l.LocationCode == "WH").LocationId,
+                ShiftId = eveningShift?.ShiftId,
                 PositionTitle = "Warehouse Associate",
                 EmploymentType = "PART_TIME",
                 HireDate = DateTime.UtcNow.AddMonths(-3).Date,
@@ -431,6 +537,7 @@ public class DatabaseSeeder
                 BadgeNumber = "EMP008",
                 DepartmentId = departments.First(d => d.DepartmentCode == "SALES").DepartmentId,
                 LocationId = locations.First(l => l.LocationCode == "HQ").LocationId,
+                ShiftId = morningShift?.ShiftId,
                 PositionTitle = "Sales Director",
                 EmploymentType = "FULL_TIME",
                 HireDate = DateTime.UtcNow.AddYears(-6).Date,

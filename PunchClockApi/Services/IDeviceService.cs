@@ -51,6 +51,13 @@ public interface IDeviceService
     Task<SyncResult> SyncStaffToDeviceAsync(Guid deviceId);
 
     /// <summary>
+    /// Removes inactive or deleted staff from a device
+    /// </summary>
+    /// <param name="deviceId">Device identifier</param>
+    /// <returns>Sync result with statistics</returns>
+    Task<SyncResult> RemoveInactiveStaffFromDeviceAsync(Guid deviceId);
+
+    /// <summary>
     /// Synchronizes attendance records from a device
     /// </summary>
     /// <param name="deviceId">Device identifier</param>
@@ -88,6 +95,20 @@ public interface IDeviceService
     /// <param name="fingerId">Finger index (0-9)</param>
     /// <returns>Operation response</returns>
     Task<OperationResponse> EnrollUserFingerprintAsync(Device device, Staff staff, int fingerId = 0);
+
+    /// <summary>
+    /// Synchronizes attendance records from a device by device ID
+    /// </summary>
+    /// <param name="deviceId">Device identifier</param>
+    /// <returns>Dynamic result with RecordsSynced count</returns>
+    Task<dynamic> SyncAttendanceAsync(Guid deviceId);
+
+    /// <summary>
+    /// Synchronizes staff enrollments to a device by device ID
+    /// </summary>
+    /// <param name="deviceId">Device identifier</param>
+    /// <returns>Dynamic result with StaffSynced count</returns>
+    Task<dynamic> SyncStaffAsync(Guid deviceId);
 }
 
 /// <summary>
@@ -100,6 +121,7 @@ public sealed class SyncResult
     public int RecordsProcessed { get; set; }
     public int RecordsCreated { get; set; }
     public int RecordsUpdated { get; set; }
+    public int RecordsDeleted { get; set; }
     public int RecordsFailed { get; set; }
     public DateTime SyncStartTime { get; set; }
     public DateTime SyncEndTime { get; set; }

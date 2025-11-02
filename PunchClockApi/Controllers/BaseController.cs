@@ -312,6 +312,19 @@ public abstract class BaseController<TEntity> : ControllerBase where TEntity : c
         return null;
     }
 
+    protected Guid? GetUserId()
+    {
+        var userIdString = GetUserIdClaim();
+        if (string.IsNullOrWhiteSpace(userIdString)) return null;
+        
+        if (Guid.TryParse(userIdString, out var userId))
+        {
+            return userId;
+        }
+        
+        return null;
+    }
+
     private static bool TryParseInt(string? input, out int value) => int.TryParse(input, NumberStyles.Integer, CultureInfo.InvariantCulture, out value);
 
     private static Dictionary<string, bool>? ParseSelect(string? select)

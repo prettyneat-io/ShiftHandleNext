@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using System.Text.Json.Serialization;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using PunchClockApi.Data;
 using Xunit;
 using Xunit.Abstractions;
@@ -15,8 +16,10 @@ namespace PunchClockApi.Tests;
 /// Tests device connection, sync operations, user enrollment, and attendance retrieval.
 /// </summary>
 [Collection("DeviceIntegration")]
-public sealed class DeviceIntegrationTests : IntegrationTestBase, IAsyncLifetime
+public sealed class DeviceIntegrationTests : IClassFixture<DeviceTestWebApplicationFactory>, IAsyncLifetime
 {
+    private readonly DeviceTestWebApplicationFactory _factory;
+    private readonly HttpClient _client;
     private readonly ITestOutputHelper _output;
     private Process? _simulatorProcess;
     private const int SimulatorPort = 4370;
@@ -27,11 +30,34 @@ public sealed class DeviceIntegrationTests : IntegrationTestBase, IAsyncLifetime
     private Guid _testLocationId;
     private Guid _testDepartmentId;
     private Guid _testStaffId;
+    private string? _accessToken;
 
-    public DeviceIntegrationTests(TestWebApplicationFactory factory, ITestOutputHelper output) 
-        : base(factory)
+    // Property to provide access to HTTP client
+    private HttpClient Client => _client;
+
+    public DeviceIntegrationTests(DeviceTestWebApplicationFactory factory, ITestOutputHelper output)
     {
+        _factory = factory;
+        _client = factory.CreateClient();
         _output = output;
+    }
+
+    /// <summary>
+    /// Authenticate as admin user and store token for subsequent requests.
+    /// </summary>
+    private async Task AuthenticateAsAdminAsync()
+    {
+        _accessToken = await TestAuthHelper.LoginAsync(_client, "admin", "admin123");
+        TestAuthHelper.AddAuthHeader(_client, _accessToken);
+    }
+
+    /// <summary>
+    /// Get a fresh database context from the factory.
+    /// </summary>
+    private PunchClockDbContext GetDbContext()
+    {
+        var scope = _factory.Services.CreateScope();
+        return scope.ServiceProvider.GetRequiredService<PunchClockDbContext>();
     }
 
     public async Task InitializeAsync()

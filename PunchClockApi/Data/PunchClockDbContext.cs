@@ -14,12 +14,14 @@ public class PunchClockDbContext : DbContext
     public DbSet<RolePermission> RolePermissions { get; set; }
     public DbSet<Department> Departments { get; set; }
     public DbSet<Location> Locations { get; set; }
+    public DbSet<Shift> Shifts { get; set; }
     public DbSet<Staff> Staff { get; set; }
     public DbSet<BiometricTemplate> BiometricTemplates { get; set; }
     public DbSet<Device> Devices { get; set; }
     public DbSet<DeviceEnrollment> DeviceEnrollments { get; set; }
     public DbSet<PunchLog> PunchLogs { get; set; }
     public DbSet<AttendanceRecord> AttendanceRecords { get; set; }
+    public DbSet<AttendanceCorrection> AttendanceCorrections { get; set; }
     public DbSet<SyncLog> SyncLogs { get; set; }
     public DbSet<AuditLog> AuditLogs { get; set; }
     public DbSet<ExportLog> ExportLogs { get; set; }
@@ -146,6 +148,31 @@ public class PunchClockDbContext : DbContext
             entity.HasIndex(e => e.LocationCode).IsUnique();
         });
 
+        // Shift
+        modelBuilder.Entity<Shift>(entity =>
+        {
+            entity.ToTable("shifts");
+            entity.HasKey(e => e.ShiftId);
+            entity.Property(e => e.ShiftId).HasColumnName("shift_id").HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(e => e.ShiftName).HasColumnName("shift_name").HasMaxLength(100).IsRequired();
+            entity.Property(e => e.ShiftCode).HasColumnName("shift_code").HasMaxLength(20);
+            entity.Property(e => e.StartTime).HasColumnName("start_time");
+            entity.Property(e => e.EndTime).HasColumnName("end_time");
+            entity.Property(e => e.RequiredHours).HasColumnName("required_hours");
+            entity.Property(e => e.GracePeriodMinutes).HasColumnName("grace_period_minutes").HasDefaultValue(15);
+            entity.Property(e => e.LateThresholdMinutes).HasColumnName("late_threshold_minutes").HasDefaultValue(15);
+            entity.Property(e => e.EarlyLeaveThresholdMinutes).HasColumnName("early_leave_threshold_minutes").HasDefaultValue(15);
+            entity.Property(e => e.HasBreak).HasColumnName("has_break").HasDefaultValue(true);
+            entity.Property(e => e.BreakDuration).HasColumnName("break_duration");
+            entity.Property(e => e.BreakStartTime).HasColumnName("break_start_time");
+            entity.Property(e => e.AutoDeductBreak).HasColumnName("auto_deduct_break").HasDefaultValue(true);
+            entity.Property(e => e.IsActive).HasColumnName("is_active").HasDefaultValue(true);
+            entity.Property(e => e.Description).HasColumnName("description");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.HasIndex(e => e.ShiftCode).IsUnique();
+        });
+
         // Staff
         modelBuilder.Entity<Staff>(entity =>
         {
@@ -162,6 +189,7 @@ public class PunchClockDbContext : DbContext
             entity.Property(e => e.Mobile).HasColumnName("mobile").HasMaxLength(20);
             entity.Property(e => e.DepartmentId).HasColumnName("department_id");
             entity.Property(e => e.LocationId).HasColumnName("location_id");
+            entity.Property(e => e.ShiftId).HasColumnName("shift_id");
             entity.Property(e => e.PositionTitle).HasColumnName("position_title").HasMaxLength(100);
             entity.Property(e => e.EmploymentType).HasColumnName("employment_type").HasMaxLength(20);
             entity.Property(e => e.HireDate).HasColumnName("hire_date");
@@ -174,6 +202,7 @@ public class PunchClockDbContext : DbContext
             entity.Property(e => e.UpdatedBy).HasColumnName("updated_by");
             entity.HasOne(e => e.Department).WithMany(d => d.StaffMembers).HasForeignKey(e => e.DepartmentId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(e => e.Location).WithMany(l => l.StaffMembers).HasForeignKey(e => e.LocationId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Shift).WithMany(s => s.StaffMembers).HasForeignKey(e => e.ShiftId).OnDelete(DeleteBehavior.Restrict);
             entity.HasIndex(e => e.EmployeeId).IsUnique();
             entity.HasIndex(e => e.BadgeNumber).IsUnique();
             entity.HasIndex(e => e.Email).IsUnique();
@@ -315,6 +344,39 @@ public class PunchClockDbContext : DbContext
             entity.Property(e => e.ModifiedBy).HasColumnName("modified_by");
             entity.HasOne(e => e.Staff).WithMany(s => s.AttendanceRecords).HasForeignKey(e => e.StaffId).OnDelete(DeleteBehavior.Cascade);
             entity.HasIndex(e => new { e.StaffId, e.AttendanceDate }).IsUnique();
+        });
+
+        // AttendanceCorrection
+        modelBuilder.Entity<AttendanceCorrection>(entity =>
+        {
+            entity.ToTable("attendance_corrections");
+            entity.HasKey(e => e.CorrectionId);
+            entity.Property(e => e.CorrectionId).HasColumnName("correction_id").HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(e => e.RecordId).HasColumnName("record_id");
+            entity.Property(e => e.StaffId).HasColumnName("staff_id");
+            entity.Property(e => e.AttendanceDate).HasColumnName("attendance_date");
+            entity.Property(e => e.CorrectionType).HasColumnName("correction_type").HasMaxLength(20).IsRequired();
+            entity.Property(e => e.OriginalClockIn).HasColumnName("original_clock_in");
+            entity.Property(e => e.OriginalClockOut).HasColumnName("original_clock_out");
+            entity.Property(e => e.CorrectedClockIn).HasColumnName("corrected_clock_in");
+            entity.Property(e => e.CorrectedClockOut).HasColumnName("corrected_clock_out");
+            entity.Property(e => e.Reason).HasColumnName("reason").IsRequired();
+            entity.Property(e => e.SupportingDocuments).HasColumnName("supporting_documents").HasColumnType("jsonb");
+            entity.Property(e => e.Status).HasColumnName("status").HasMaxLength(20).HasDefaultValue("PENDING");
+            entity.Property(e => e.RequestedBy).HasColumnName("requested_by");
+            entity.Property(e => e.RequestedAt).HasColumnName("requested_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.ReviewedBy).HasColumnName("reviewed_by");
+            entity.Property(e => e.ReviewedAt).HasColumnName("reviewed_at");
+            entity.Property(e => e.ReviewNotes).HasColumnName("review_notes");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.HasOne(e => e.Record).WithMany().HasForeignKey(e => e.RecordId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Staff).WithMany().HasForeignKey(e => e.StaffId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.RequestedByUser).WithMany().HasForeignKey(e => e.RequestedBy).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.ReviewedByUser).WithMany().HasForeignKey(e => e.ReviewedBy).OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(e => e.RecordId);
+            entity.HasIndex(e => e.StaffId);
+            entity.HasIndex(e => e.Status);
         });
 
         // SyncLog

@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PunchClockApi.Data;
 using PunchClockApi.Models;
+using PunchClockApi.Services;
 
 namespace PunchClockApi.Controllers;
 
@@ -10,11 +11,16 @@ namespace PunchClockApi.Controllers;
 public sealed class AttendanceController : BaseController<object>
 {
     private readonly PunchClockDbContext _db;
+    private readonly AttendanceProcessingService _attendanceService;
 
-    public AttendanceController(PunchClockDbContext db, ILogger<AttendanceController> logger)
+    public AttendanceController(
+        PunchClockDbContext db, 
+        AttendanceProcessingService attendanceService,
+        ILogger<AttendanceController> logger)
         : base(logger)
     {
         _db = db;
+        _attendanceService = attendanceService;
     }
 
     [HttpGet("logs")]
@@ -156,4 +162,332 @@ public sealed class AttendanceController : BaseController<object>
             return HandleError(ex);
         }
     }
+
+    [HttpGet("corrections")]
+    public async Task<IActionResult> GetCorrections(
+        [FromQuery] Guid? staffId,
+        [FromQuery] string? status,
+        [FromQuery] int? page,
+        [FromQuery] int? limit)
+    {
+        try
+        {
+            var query = _db.AttendanceCorrections
+                .Include(c => c.Staff)
+                .Include(c => c.RequestedByUser)
+                .Include(c => c.ReviewedByUser)
+                .AsQueryable();
+
+            if (staffId.HasValue)
+            {
+                query = query.Where(c => c.StaffId == staffId.Value);
+            }
+
+            if (!string.IsNullOrEmpty(status))
+            {
+                query = query.Where(c => c.Status == status.ToUpper());
+            }
+
+            query = query.OrderByDescending(c => c.RequestedAt);
+
+            var total = await query.CountAsync();
+
+            var pageNum = page ?? 1;
+            var pageSize = limit ?? 50;
+            query = query.Skip((pageNum - 1) * pageSize).Take(pageSize);
+
+            var corrections = await query.ToListAsync();
+
+            return Ok(new { total, page = pageNum, pageSize, data = corrections });
+        }
+        catch (Exception ex)
+        {
+            return HandleError(ex);
+        }
+    }
+
+    [HttpGet("corrections/{id:guid}")]
+    public async Task<IActionResult> GetCorrectionById(Guid id)
+    {
+        try
+        {
+            var correction = await _db.AttendanceCorrections
+                .Include(c => c.Staff)
+                .Include(c => c.Record)
+                .Include(c => c.RequestedByUser)
+                .Include(c => c.ReviewedByUser)
+                .FirstOrDefaultAsync(c => c.CorrectionId == id);
+
+            if (correction == null)
+            {
+                return NotFound(new { message = "Correction not found" });
+            }
+
+            return Ok(correction);
+        }
+        catch (Exception ex)
+        {
+            return HandleError(ex);
+        }
+    }
+
+    [HttpPost("corrections")]
+    public async Task<IActionResult> CreateCorrection([FromBody] AttendanceCorrection correction)
+    {
+        try
+        {
+            // Validate the attendance record exists
+            var record = await _db.AttendanceRecords
+                .FirstOrDefaultAsync(r => r.RecordId == correction.RecordId);
+
+            if (record == null)
+            {
+                return NotFound(new { message = "Attendance record not found" });
+            }
+
+            // Set audit fields
+            correction.CorrectionId = Guid.NewGuid();
+            correction.StaffId = record.StaffId;
+            correction.AttendanceDate = record.AttendanceDate;
+            correction.OriginalClockIn = record.ClockIn;
+            correction.OriginalClockOut = record.ClockOut;
+            correction.Status = "PENDING";
+            correction.RequestedBy = GetUserId() ?? Guid.Empty;
+            correction.RequestedAt = DateTime.UtcNow;
+            correction.CreatedAt = DateTime.UtcNow;
+            correction.UpdatedAt = DateTime.UtcNow;
+
+            _db.AttendanceCorrections.Add(correction);
+            await _db.SaveChangesAsync();
+
+            return Created($"/api/attendance/corrections/{correction.CorrectionId}", correction);
+        }
+        catch (Exception ex)
+        {
+            return HandleError(ex);
+        }
+    }
+
+    [HttpPost("corrections/{id:guid}/approve")]
+    public async Task<IActionResult> ApproveCorrection(Guid id, [FromBody] ApprovalRequest request)
+    {
+        try
+        {
+            var correction = await _db.AttendanceCorrections
+                .Include(c => c.Record)
+                .Include(c => c.Staff)
+                .FirstOrDefaultAsync(c => c.CorrectionId == id);
+
+            if (correction == null)
+            {
+                return NotFound(new { message = "Correction not found" });
+            }
+
+            if (correction.Status != "PENDING")
+            {
+                return BadRequest(new { message = $"Cannot approve correction with status: {correction.Status}" });
+            }
+
+            // Update correction status
+            correction.Status = "APPROVED";
+            correction.ReviewedBy = GetUserId() ?? Guid.Empty;
+            correction.ReviewedAt = DateTime.UtcNow;
+            correction.ReviewNotes = request.Notes;
+            correction.UpdatedAt = DateTime.UtcNow;
+
+            // Apply the correction to the attendance record
+            var record = correction.Record;
+            record.ClockIn = correction.CorrectedClockIn ?? record.ClockIn;
+            record.ClockOut = correction.CorrectedClockOut ?? record.ClockOut;
+            record.UpdatedAt = DateTime.UtcNow;
+            record.ModifiedBy = GetUserId();
+
+            await _db.SaveChangesAsync();
+
+            // Reprocess attendance with the AttendanceProcessingService
+            var reprocessedRecord = await _attendanceService.ProcessDailyAttendance(
+                correction.StaffId,
+                correction.AttendanceDate.ToDateTime(TimeOnly.MinValue)
+            );
+
+            return Ok(new 
+            { 
+                message = "Correction approved and attendance reprocessed", 
+                correction = correction,
+                updatedRecord = reprocessedRecord
+            });
+        }
+        catch (Exception ex)
+        {
+            return HandleError(ex);
+        }
+    }
+
+    [HttpPost("corrections/{id:guid}/reject")]
+    public async Task<IActionResult> RejectCorrection(Guid id, [FromBody] ApprovalRequest request)
+    {
+        try
+        {
+            var correction = await _db.AttendanceCorrections
+                .FirstOrDefaultAsync(c => c.CorrectionId == id);
+
+            if (correction == null)
+            {
+                return NotFound(new { message = "Correction not found" });
+            }
+
+            if (correction.Status != "PENDING")
+            {
+                return BadRequest(new { message = $"Cannot reject correction with status: {correction.Status}" });
+            }
+
+            correction.Status = "REJECTED";
+            correction.ReviewedBy = GetUserId() ?? Guid.Empty;
+            correction.ReviewedAt = DateTime.UtcNow;
+            correction.ReviewNotes = request.Notes ?? "No reason provided";
+            correction.UpdatedAt = DateTime.UtcNow;
+
+            await _db.SaveChangesAsync();
+
+            return Ok(new { message = "Correction rejected", correction });
+        }
+        catch (Exception ex)
+        {
+            return HandleError(ex);
+        }
+    }
+
+    [HttpPost("corrections/bulk-approve")]
+    public async Task<IActionResult> BulkApproveCorrections([FromBody] BulkCorrectionRequest request)
+    {
+        try
+        {
+            var corrections = await _db.AttendanceCorrections
+                .Include(c => c.Record)
+                .Include(c => c.Staff)
+                .Where(c => request.CorrectionIds.Contains(c.CorrectionId))
+                .ToListAsync();
+
+            if (corrections.Count != request.CorrectionIds.Count)
+            {
+                var foundIds = corrections.Select(c => c.CorrectionId).ToHashSet();
+                var missingIds = request.CorrectionIds.Except(foundIds).ToList();
+                return BadRequest(new 
+                { 
+                    message = "Some corrections not found",
+                    missingCorrectionIds = missingIds
+                });
+            }
+
+            var results = new List<BulkCorrectionResult>();
+            var reviewerId = GetUserId() ?? Guid.Empty;
+            var now = DateTime.UtcNow;
+
+            foreach (var correction in corrections)
+            {
+                if (correction.Status != "PENDING")
+                {
+                    results.Add(new BulkCorrectionResult(
+                        correction.CorrectionId,
+                        correction.Status,
+                        false,
+                        $"Cannot {request.Action} correction with status: {correction.Status}"
+                    ));
+                    continue;
+                }
+
+                try
+                {
+                    if (request.Action.ToUpper() == "APPROVE")
+                    {
+                        // Update correction status
+                        correction.Status = "APPROVED";
+                        correction.ReviewedBy = reviewerId;
+                        correction.ReviewedAt = now;
+                        correction.ReviewNotes = request.Notes;
+                        correction.UpdatedAt = now;
+
+                        // Apply the correction to the attendance record
+                        var record = correction.Record;
+                        record.ClockIn = correction.CorrectedClockIn ?? record.ClockIn;
+                        record.ClockOut = correction.CorrectedClockOut ?? record.ClockOut;
+                        record.UpdatedAt = now;
+                        record.ModifiedBy = reviewerId;
+
+                        await _db.SaveChangesAsync();
+
+                        // Reprocess attendance
+                        await _attendanceService.ProcessDailyAttendance(
+                            correction.StaffId,
+                            correction.AttendanceDate.ToDateTime(TimeOnly.MinValue)
+                        );
+
+                        results.Add(new BulkCorrectionResult(
+                            correction.CorrectionId,
+                            "APPROVED",
+                            true,
+                            "Correction approved and attendance reprocessed"
+                        ));
+                    }
+                    else if (request.Action.ToUpper() == "REJECT")
+                    {
+                        correction.Status = "REJECTED";
+                        correction.ReviewedBy = reviewerId;
+                        correction.ReviewedAt = now;
+                        correction.ReviewNotes = request.Notes ?? "No reason provided";
+                        correction.UpdatedAt = now;
+
+                        await _db.SaveChangesAsync();
+
+                        results.Add(new BulkCorrectionResult(
+                            correction.CorrectionId,
+                            "REJECTED",
+                            true,
+                            "Correction rejected"
+                        ));
+                    }
+                    else
+                    {
+                        results.Add(new BulkCorrectionResult(
+                            correction.CorrectionId,
+                            correction.Status,
+                            false,
+                            $"Invalid action: {request.Action}. Must be APPROVE or REJECT"
+                        ));
+                    }
+                }
+                catch (Exception ex)
+                {
+                    results.Add(new BulkCorrectionResult(
+                        correction.CorrectionId,
+                        correction.Status,
+                        false,
+                        $"Error processing correction: {ex.Message}"
+                    ));
+                }
+            }
+
+            var successCount = results.Count(r => r.Success);
+            var failureCount = results.Count(r => !r.Success);
+
+            return Ok(new 
+            { 
+                message = $"Processed {results.Count} corrections: {successCount} succeeded, {failureCount} failed",
+                action = request.Action.ToUpper(),
+                successCount,
+                failureCount,
+                results
+            });
+        }
+        catch (Exception ex)
+        {
+            return HandleError(ex);
+        }
+    }
 }
+
+public record ApprovalRequest(string? Notes);
+
+public record BulkCorrectionRequest(List<Guid> CorrectionIds, string Action, string? Notes);
+
+public record BulkCorrectionResult(Guid CorrectionId, string Status, bool Success, string Message);

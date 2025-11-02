@@ -37,3 +37,27 @@ public class Location
     public ICollection<Device> Devices { get; set; } = [];
     public ICollection<Staff> StaffMembers { get; set; } = [];
 }
+
+public class Shift
+{
+    public Guid ShiftId { get; set; }
+    public string ShiftName { get; set; } = null!;
+    public string? ShiftCode { get; set; }
+    public TimeOnly StartTime { get; set; }
+    public TimeOnly EndTime { get; set; }
+    public TimeSpan RequiredHours { get; set; }
+    public int GracePeriodMinutes { get; set; } = 15;
+    public int LateThresholdMinutes { get; set; } = 15;
+    public int EarlyLeaveThresholdMinutes { get; set; } = 15;
+    public bool HasBreak { get; set; } = true;
+    public TimeSpan? BreakDuration { get; set; }
+    public TimeOnly? BreakStartTime { get; set; }
+    public bool AutoDeductBreak { get; set; } = true;
+    public bool IsActive { get; set; } = true;
+    public string? Description { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+
+    // Navigation properties
+    public ICollection<Staff> StaffMembers { get; set; } = [];
+}

@@ -1,3 +1,4 @@
+using Moq;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
@@ -7,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using PunchClockApi.Data;
+using PunchClockApi.Services;
 
 namespace PunchClockApi.Tests;
 
@@ -27,6 +29,29 @@ public sealed class TestWebApplicationFactory : WebApplicationFactory<Program>
             {
                 options.UseInMemoryDatabase("TestDatabase");
             });
+            
+            // Replace IDeviceService with a mock (avoid Python.NET in tests)
+            services.RemoveAll<IDeviceService>();
+            var mockDeviceService = new Mock<IDeviceService>();
+            
+            // Setup default mock behavior for successful device operations
+            mockDeviceService
+                .Setup(s => s.SyncAttendanceAsync(It.IsAny<Guid>()))
+                .ReturnsAsync((Guid deviceId) => new
+                {
+                    Success = true,
+                    RecordsSynced = 0
+                });
+                
+            mockDeviceService
+                .Setup(s => s.SyncStaffAsync(It.IsAny<Guid>()))
+                .ReturnsAsync((Guid deviceId) => new
+                {
+                    Success = true,
+                    StaffSynced = 0
+                });
+            
+            services.AddSingleton(mockDeviceService.Object);
             
             // Register a hosted service to seed the database on startup
             services.AddSingleton<IHostedService, TestDatabaseSeeder>();
@@ -52,11 +77,17 @@ internal sealed class TestDatabaseSeeder : IHostedService
         var db = scope.ServiceProvider.GetRequiredService<PunchClockDbContext>();
         var logger = scope.ServiceProvider.GetRequiredService<ILogger<DatabaseSeeder>>();
         
+        // EnsureCreated creates the database schema from the model
+        // This is sufficient for in-memory database testing
         await db.Database.EnsureCreatedAsync(cancellationToken);
         
-        // Seed test data
-        var seeder = new DatabaseSeeder(db, logger);
-        await seeder.SeedAsync();
+        // Check if database is already seeded to avoid duplicate seeding
+        if (!await db.Users.AnyAsync(cancellationToken))
+        {
+            // Seed test data
+            var seeder = new DatabaseSeeder(db, logger);
+            await seeder.SeedAsync();
+        }
     }
 
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;

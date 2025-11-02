@@ -1,4 +1,6 @@
 using System.Text;
+using Hangfire;
+using Hangfire.PostgreSql;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -10,13 +12,16 @@ using Python.Runtime;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Initialize Python.NET for device integration
-// Set Python DLL path for Linux
-if (OperatingSystem.IsLinux())
+// Initialize Python.NET for device integration (skip in test environment)
+if (!builder.Environment.IsEnvironment("Testing"))
 {
-    Runtime.PythonDLL = "/usr/lib/x86_64-linux-gnu/libpython3.13.so.1.0";
+    // Set Python DLL path for Linux
+    if (OperatingSystem.IsLinux())
+    {
+        Runtime.PythonDLL = "/usr/lib/x86_64-linux-gnu/libpython3.13.so.1.0";
+    }
+    PyZKClient.InitializePython();
 }
-PyZKClient.InitializePython();
 
 // Add services to the container
 builder.Services.AddControllers()
@@ -63,8 +68,33 @@ if (!builder.Environment.IsEnvironment("Testing"))
         options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 }
 
-// Register application services
-builder.Services.AddScoped<IDeviceService, DeviceService>();
+// Register application services (skip IDeviceService in tests - mock will be provided)
+if (!builder.Environment.IsEnvironment("Testing"))
+{
+    builder.Services.AddScoped<IDeviceService, DeviceService>();
+}
+builder.Services.AddScoped<AttendanceProcessingService>();
+builder.Services.AddScoped<AttendanceProcessingJob>();
+builder.Services.AddScoped<DeviceSyncJob>();
+
+// Configure Hangfire for background jobs (skip in test environment)
+if (!builder.Environment.IsEnvironment("Testing"))
+{
+    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+    
+    builder.Services.AddHangfire(configuration => configuration
+        .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
+        .UseSimpleAssemblyNameTypeSerializer()
+        .UseRecommendedSerializerSettings()
+        .UsePostgreSqlStorage(options => 
+            options.UseNpgsqlConnection(connectionString)));
+
+    builder.Services.AddHangfireServer(options =>
+    {
+        options.WorkerCount = 2;
+        options.SchedulePollingInterval = TimeSpan.FromSeconds(15);
+    });
+}
 
 // Configure JWT Authentication
 var jwtSecret = builder.Configuration["Jwt:Secret"] 
@@ -140,6 +170,45 @@ if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "Punch Clock API v1"));
+}
+
+// Configure Hangfire dashboard (skip in test environment)
+if (!app.Environment.IsEnvironment("Testing"))
+{
+    // Allow anonymous access only in development, require admin in production
+    var allowAnonymous = app.Environment.IsDevelopment();
+    
+    app.UseHangfireDashboard("/hangfire", new DashboardOptions
+    {
+        Authorization = [new HangfireAuthorizationFilter(allowAnonymous)],
+        DashboardTitle = "Punch Clock Background Jobs"
+    });
+
+    // Schedule recurring jobs
+    RecurringJob.AddOrUpdate<DeviceSyncJob>(
+        "sync-all-devices",
+        job => job.SyncAllDevicesAsync(),
+        Cron.Hourly);  // Run every hour
+
+    RecurringJob.AddOrUpdate<DeviceSyncJob>(
+        "sync-all-staff",
+        job => job.SyncAllStaffAsync(),
+        "0 */6 * * *");  // Run every 6 hours
+
+    RecurringJob.AddOrUpdate<DeviceSyncJob>(
+        "remove-inactive-staff",
+        job => job.RemoveInactiveStaffFromAllDevicesAsync(),
+        Cron.Daily(2));  // Run daily at 2:00 AM
+
+    RecurringJob.AddOrUpdate<AttendanceProcessingJob>(
+        "process-yesterday-attendance",
+        job => job.ProcessYesterdayAttendanceAsync(),
+        Cron.Daily(1));  // Run daily at 1:00 AM
+
+    RecurringJob.AddOrUpdate<AttendanceProcessingJob>(
+        "process-pending-punches",
+        job => job.ProcessPendingPunchLogsAsync(),
+        "*/30 * * * *");  // Run every 30 minutes
 }
 
 app.UseCors("AllowAll");

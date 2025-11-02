@@ -5,10 +5,38 @@ public class SyncLog
     public Guid SyncId { get; set; }
     public Guid? DeviceId { get; set; }
     public string SyncType { get; set; } = null!;
-    public string SyncStatus { get; set; } = null!;
+    
+    private string _syncStatus = null!;
+    public string SyncStatus
+    {
+        get => _syncStatus;
+        set => _syncStatus = value;
+    }
+    
+    // Alias for SyncStatus for convenience
+    public string Status
+    {
+        get => SyncStatus;
+        set => SyncStatus = value;
+    }
+    
     public DateTime StartedAt { get; set; }
     public DateTime? CompletedAt { get; set; }
-    public int? RecordsProcessed { get; set; }
+    
+    private int? _recordsProcessed;
+    public int? RecordsProcessed
+    {
+        get => _recordsProcessed;
+        set => _recordsProcessed = value;
+    }
+    
+    // Alias for RecordsProcessed
+    public int? RecordsSynced
+    {
+        get => RecordsProcessed;
+        set => RecordsProcessed = value;
+    }
+    
     public int? RecordsFailed { get; set; }
     public string? ErrorMessage { get; set; }
     public string? ErrorDetails { get; set; }

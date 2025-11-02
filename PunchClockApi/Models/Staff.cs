@@ -13,6 +13,7 @@ public class Staff
     public string? Mobile { get; set; }
     public Guid? DepartmentId { get; set; }
     public Guid? LocationId { get; set; }
+    public Guid? ShiftId { get; set; }
     public string? PositionTitle { get; set; }
     public string? EmploymentType { get; set; }
     public DateTime HireDate { get; set; }
@@ -27,6 +28,7 @@ public class Staff
     // Navigation properties
     public Department? Department { get; set; }
     public Location? Location { get; set; }
+    public Shift? Shift { get; set; }
     public ICollection<BiometricTemplate> BiometricTemplates { get; set; } = [];
     public ICollection<DeviceEnrollment> DeviceEnrollments { get; set; } = [];
     public ICollection<PunchLog> PunchLogs { get; set; } = [];

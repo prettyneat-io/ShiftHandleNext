@@ -255,7 +255,8 @@ public sealed class DeviceService : IDeviceService, IDisposable
         var result = new SyncResult
         {
             SyncStartTime = DateTime.UtcNow,
-            Success = false
+            Success = false,
+            Errors = [] // Initialize to prevent NullReferenceException
         };
 
         try
@@ -277,6 +278,7 @@ public sealed class DeviceService : IDeviceService, IDisposable
             if (!success)
             {
                 result.Message = $"Failed to connect: {error}";
+                result.Errors.Add($"Connection failed: {error}");
                 return result;
             }
 
@@ -315,7 +317,10 @@ public sealed class DeviceService : IDeviceService, IDisposable
                                 DeviceId = deviceId,
                                 StaffId = staff.StaffId,
                                 DeviceUserId = deviceUserId,
+                                EnrollmentStatus = "COMPLETED",
                                 EnrolledAt = DateTime.UtcNow,
+                                LastSyncAt = DateTime.UtcNow,
+                                SyncStatus = "SUCCESS",
                                 CreatedAt = DateTime.UtcNow,
                                 UpdatedAt = DateTime.UtcNow
                             };
@@ -324,6 +329,10 @@ public sealed class DeviceService : IDeviceService, IDisposable
                         }
                         else
                         {
+                            enrollment.EnrollmentStatus = "COMPLETED";
+                            enrollment.LastSyncAt = DateTime.UtcNow;
+                            enrollment.SyncStatus = "SUCCESS";
+                            enrollment.SyncErrorMessage = null;
                             enrollment.UpdatedAt = DateTime.UtcNow;
                             result.RecordsUpdated++;
                         }
@@ -332,6 +341,16 @@ public sealed class DeviceService : IDeviceService, IDisposable
                     {
                         result.RecordsFailed++;
                         result.Errors.Add($"Failed to add {staff.EmployeeId}: {addResult.Error}");
+                        
+                        // Update enrollment with error status
+                        if (enrollment != null)
+                        {
+                            enrollment.SyncStatus = "FAILED";
+                            enrollment.SyncErrorMessage = addResult.Error;
+                            enrollment.LastSyncAt = DateTime.UtcNow;
+                            enrollment.UpdatedAt = DateTime.UtcNow;
+                        }
+                        
                         _logger.LogWarning("Failed to add staff {StaffId} to device {DeviceId}: {Error}",
                             staff.StaffId, deviceId, addResult.Error);
                     }
@@ -366,12 +385,119 @@ public sealed class DeviceService : IDeviceService, IDisposable
         }
     }
 
+    public async Task<SyncResult> RemoveInactiveStaffFromDeviceAsync(Guid deviceId)
+    {
+        var result = new SyncResult
+        {
+            SyncStartTime = DateTime.UtcNow,
+            Success = false,
+            Errors = []
+        };
+
+        try
+        {
+            var device = await _db.Devices
+                .Include(d => d.Location)
+                .FirstOrDefaultAsync(d => d.DeviceId == deviceId);
+
+            if (device == null)
+            {
+                result.Message = "Device not found";
+                return result;
+            }
+
+            var client = GetOrCreateClient(device);
+
+            // Ensure connected
+            var (success, error) = await EnsureConnectedAsync(client, device.DeviceId);
+            if (!success)
+            {
+                result.Message = $"Failed to connect: {error}";
+                result.Errors.Add($"Connection failed: {error}");
+                return result;
+            }
+
+            // Get all enrollments for this device where staff is inactive or deleted
+            var inactiveEnrollments = await _db.DeviceEnrollments
+                .Include(de => de.Staff)
+                .Where(de => de.DeviceId == deviceId && 
+                            (!de.Staff.IsActive || de.Staff.TerminationDate != null))
+                .ToListAsync();
+
+            foreach (var enrollment in inactiveEnrollments)
+            {
+                result.RecordsProcessed++;
+
+                try
+                {
+                    if (enrollment.DeviceUserId.HasValue)
+                    {
+                        var deleteResult = await Task.Run(() => 
+                            client.DeleteUser(enrollment.DeviceUserId.Value));
+
+                        if (deleteResult.Success)
+                        {
+                            // Remove the enrollment record
+                            _db.DeviceEnrollments.Remove(enrollment);
+                            result.RecordsDeleted++;
+                            
+                            _logger.LogInformation(
+                                "Removed inactive staff {EmployeeId} (UID: {DeviceUserId}) from device {DeviceId}",
+                                enrollment.Staff.EmployeeId, enrollment.DeviceUserId, deviceId);
+                        }
+                        else
+                        {
+                            result.RecordsFailed++;
+                            result.Errors.Add($"Failed to remove {enrollment.Staff.EmployeeId}: {deleteResult.Error}");
+                            _logger.LogWarning(
+                                "Failed to remove staff {StaffId} from device {DeviceId}: {Error}",
+                                enrollment.StaffId, deviceId, deleteResult.Error);
+                        }
+                    }
+                    else
+                    {
+                        // No device user ID, just remove the enrollment record
+                        _db.DeviceEnrollments.Remove(enrollment);
+                        result.RecordsDeleted++;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    result.RecordsFailed++;
+                    result.Errors.Add($"Error removing {enrollment.Staff.EmployeeId}: {ex.Message}");
+                    _logger.LogError(ex, "Error removing staff {StaffId} from device {DeviceId}",
+                        enrollment.StaffId, deviceId);
+                }
+            }
+
+            await _db.SaveChangesAsync();
+
+            result.Success = result.RecordsFailed == 0;
+            result.Message = $"Removed {result.RecordsDeleted} inactive staff from device";
+            result.SyncEndTime = DateTime.UtcNow;
+
+            _logger.LogInformation(
+                "Inactive staff removal completed for device {DeviceId}: {Deleted} removed, {Failed} failed",
+                deviceId, result.RecordsDeleted, result.RecordsFailed);
+
+            return result;
+        }
+        catch (Exception ex)
+        {
+            result.Message = $"Removal failed: {ex.Message}";
+            result.SyncEndTime = DateTime.UtcNow;
+            _logger.LogError(ex, "Failed to remove inactive staff from device {DeviceId}", deviceId);
+            return result;
+        }
+    }
+
     public async Task<SyncResult> SyncAttendanceFromDeviceAsync(Guid deviceId)
     {
         var result = new SyncResult
         {
             SyncStartTime = DateTime.UtcNow,
-            Success = false
+            Success = false,
+            Errors = [] // Initialize to prevent NullReferenceException
         };
 
         try
@@ -390,6 +516,7 @@ public sealed class DeviceService : IDeviceService, IDisposable
             if (!success)
             {
                 result.Message = $"Failed to connect: {error}";
+                result.Errors.Add($"Connection failed: {error}");
                 return result;
             }
 
@@ -876,5 +1003,17 @@ public sealed class DeviceService : IDeviceService, IDisposable
 
         // Return the maximum of both plus 1
         return Math.Max(maxDeviceUid, maxDbUid) + 1;
+    }
+
+    public async Task<dynamic> SyncAttendanceAsync(Guid deviceId)
+    {
+        var result = await SyncAttendanceFromDeviceAsync(deviceId);
+        return new { Success = result.Success, RecordsSynced = result.RecordsProcessed };
+    }
+
+    public async Task<dynamic> SyncStaffAsync(Guid deviceId)
+    {
+        var result = await SyncStaffToDeviceAsync(deviceId);
+        return new { Success = result.Success, StaffSynced = result.RecordsProcessed };
     }
 }

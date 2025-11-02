@@ -56,3 +56,32 @@ public class AttendanceRecord
     // Navigation properties
     public Staff Staff { get; set; } = null!;
 }
+
+public class AttendanceCorrection
+{
+    public Guid CorrectionId { get; set; }
+    public Guid RecordId { get; set; }
+    public Guid StaffId { get; set; }
+    public DateOnly AttendanceDate { get; set; }
+    public string CorrectionType { get; set; } = null!; // "CLOCK_IN", "CLOCK_OUT", "BOTH", "MANUAL_ENTRY"
+    public DateTime? OriginalClockIn { get; set; }
+    public DateTime? OriginalClockOut { get; set; }
+    public DateTime? CorrectedClockIn { get; set; }
+    public DateTime? CorrectedClockOut { get; set; }
+    public string Reason { get; set; } = null!;
+    public string? SupportingDocuments { get; set; }
+    public string Status { get; set; } = "PENDING"; // "PENDING", "APPROVED", "REJECTED"
+    public Guid RequestedBy { get; set; }
+    public DateTime RequestedAt { get; set; }
+    public Guid? ReviewedBy { get; set; }
+    public DateTime? ReviewedAt { get; set; }
+    public string? ReviewNotes { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+
+    // Navigation properties
+    public AttendanceRecord Record { get; set; } = null!;
+    public Staff Staff { get; set; } = null!;
+    public User RequestedByUser { get; set; } = null!;
+    public User? ReviewedByUser { get; set; }
+}
