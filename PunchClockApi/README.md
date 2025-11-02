@@ -6,20 +6,24 @@ A .NET 9.0 Web API backend for biometric punch clock synchronization and attenda
 
 - ✅ **JWT Authentication** - Token-based authentication with role-based access control
 - ✅ **Staff Management** - CRUD operations for employee records with biometric enrollment
-- ✅ **Device Management** - Manage biometric punch clock devices across multiple locations
+- ✅ **Device Management** - Manage ZKTeco biometric punch clock devices across multiple locations
+- ✅ **ZKTeco Integration** - Full PyZK library integration for real device communication
+- ✅ **Remote Fingerprint Enrollment** - Trigger fingerprint enrollment from API
+- ✅ **Device Synchronization** - Sync staff enrollments and attendance records
 - ✅ **Attendance Tracking** - Punch logs and attendance records with date filtering
 - ✅ **Biometric Templates** - Store and manage fingerprint/face templates
 - ✅ **Department & Location Management** - Organizational hierarchy support
 - ✅ **Advanced Query Options** - Pagination, sorting, filtering, and eager loading
 - ✅ **EF Core with PostgreSQL** - Modern ORM with snake_case conventions
-- ✅ **Comprehensive Testing** - 40 integration tests with in-memory database
+- ✅ **Comprehensive Testing** - 59 integration tests with in-memory database
+- ✅ **ZK Device Simulator** - Full device emulator for testing without hardware
 - ✅ **Swagger Documentation** - Interactive API documentation with JWT support
 
 ## Prerequisites
 
 - .NET 9.0 SDK
-- Docker & Docker Compose
-- PostgreSQL (via Docker)
+- Docker & Docker Compose (for PostgreSQL)
+- Python 3.8+ (for ZK device simulator, optional)
 
 ## Getting Started
 
@@ -68,6 +72,21 @@ Use Swagger or send a POST request to `/api/auth/login`:
 
 Copy the `accessToken` from the response and click "Authorize" in Swagger UI, then enter: `Bearer <your-token>`
 
+### 7. (Optional) Test ZK Device Integration
+
+Start the ZK device simulator in a separate terminal:
+```bash
+cd Device
+python zk_simulator.py
+# Simulator runs on 127.0.0.1:4370
+```
+
+Then use Swagger to test device operations:
+- Connect to device
+- Get device users
+- Sync staff to device
+- Enroll fingerprints remotely
+
 ## Project Structure
 
 ```
@@ -75,12 +94,20 @@ PunchClockApi/
 ├── Controllers/
 │   ├── AuthController.cs           # Authentication endpoints (login, register)
 │   ├── StaffController.cs          # Staff CRUD operations
-│   ├── DevicesController.cs        # Device management
+│   ├── DevicesController.cs        # Device management & ZK integration
 │   ├── AttendanceController.cs     # Punch logs and attendance records
 │   ├── OrganizationController.cs   # Departments and locations
 │   ├── UsersController.cs          # User management
 │   ├── SystemController.cs         # Health check
 │   └── BaseController.cs           # Shared controller logic
+├── Services/
+│   ├── DeviceService.cs            # ZKTeco device integration service
+│   └── IDeviceService.cs           # Device service interface
+├── Device/
+│   ├── PyZKClient.cs               # C# wrapper for PyZK
+│   ├── pyzk_wrapper.py             # Python wrapper for ZK devices
+│   ├── zk_simulator.py             # ZK device simulator for testing
+│   └── zk/                         # PyZK library (device protocol)
 ├── Data/
 │   ├── PunchClockDbContext.cs      # EF Core DbContext with fluent configuration
 │   └── DatabaseSeeder.cs           # Development data seeding
@@ -114,7 +141,17 @@ PunchClockApi/
 - `GET /api/devices/{id}` - Get device by ID
 - `POST /api/devices` - Register new device
 - `PUT /api/devices/{id}` - Update device
-- `POST /api/devices/{id}/sync` - Trigger device sync
+- `DELETE /api/devices/{id}` - Soft delete device
+- `POST /api/devices/{id}/connect` - Connect to ZKTeco device
+- `POST /api/devices/{id}/disconnect` - Disconnect from device
+- `POST /api/devices/{id}/test-connection` - Test device connectivity
+- `GET /api/devices/{id}/info` - Get detailed device information
+- `GET /api/devices/{id}/users` - Get all users from device
+- `GET /api/devices/{id}/attendance` - Get all attendance records from device
+- `POST /api/devices/{id}/sync-staff` - Sync staff enrollments to device
+- `POST /api/devices/{id}/sync-attendance` - Sync attendance records from device
+- `POST /api/devices/{id}/staff/{staffId}/enroll` - Enroll staff on device
+- `POST /api/devices/{id}/staff/{staffId}/enroll-fingerprint?fingerId={0-9}` - Remote fingerprint enrollment
 
 ### Attendance (Requires Authentication)
 - `GET /api/attendance/logs` - Get punch logs with date/staff/device filters
@@ -213,13 +250,27 @@ dotnet test
 dotnet test --filter "FullyQualifiedName~AuthenticationTests"
 dotnet test --filter "FullyQualifiedName~QueryOptionsTests"
 dotnet test --filter "FullyQualifiedName~ApiEndpointTests"
+dotnet test --filter "FullyQualifiedName~DeviceIntegrationTests"
 ```
 
 ### Test Coverage
-- **40 integration tests** covering authentication, query options, and API endpoints
+- **59 integration tests** covering authentication, query options, API endpoints, and device integration
+- **Authentication Tests (8)** - Login, registration, protected endpoints
+- **Query Options Tests (20)** - Pagination, sorting, filtering, eager loading
+- **API Endpoint Tests (12)** - Full CRUD operations for all entities
+- **Device Integration Tests (19)** - Real ZK simulator integration for device operations
 - In-memory database for fast, isolated testing
 - No external dependencies required
 - See `PunchClockApi.Tests/README.md` for detailed test documentation
+
+### ZK Device Simulator
+For manual testing of device operations:
+```bash
+cd Device
+python zk_simulator.py
+# Simulator runs on 127.0.0.1:4370
+# Pre-loaded with test users and attendance data
+```
 
 ## Development Notes
 
@@ -235,10 +286,20 @@ This project uses ASP.NET Core controllers with attribute routing:
 The schema includes:
 - **Users & RBAC** - Role-based access control with User, Role, Permission entities
 - **Staff Management** - Employee records with biometric templates and device enrollments
-- **Device Management** - Punch clock device registry with location assignments
+- **Device Management** - Punch clock device registry with location assignments and ZKTeco integration
 - **Attendance Tracking** - PunchLog (raw data) and AttendanceRecord (processed daily summaries)
 - **Organization** - Department hierarchy and location management
 - **Audit Trail** - SyncLog, AuditLog, and ExportLog for complete traceability
+
+### ZKTeco Device Integration
+The system integrates with ZKTeco biometric devices using the PyZK Python library:
+- **Full Device Communication** - Connect, disconnect, test connectivity
+- **User Management** - Add/delete users on devices with biometric data
+- **Attendance Synchronization** - Pull attendance records from devices
+- **Staff Synchronization** - Push staff enrollments to devices
+- **Remote Fingerprint Enrollment** - Trigger enrollment process from API
+- **Device Simulator** - Full ZK device emulator for testing without hardware
+- **Python.NET Integration** - C# service layer wrapping PyZK operations
 
 ### Conventions
 - **Snake_case** for database columns (PostgreSQL convention) via `.HasColumnName()`
@@ -261,14 +322,14 @@ To disable seeding, set `"SeedDatabase": false` in configuration.
 
 ## Next Steps
 
-- 🔄 **Device Integration Service** - ZKTeco SDK client for real device synchronization
 - 🔄 **Attendance Processing** - Background job to process PunchLogs → AttendanceRecords
-- 🔄 **Reporting Endpoints** - Export attendance data (CSV, Excel) for payroll
 - 🔄 **Background Jobs** - Hangfire/Quartz for scheduled device sync
+- 🔄 **Reporting Endpoints** - Export attendance data (CSV, Excel) for payroll
 - 🔄 **Enhanced Validation** - FluentValidation for input validation
 - 🔄 **Global Error Handler** - Middleware for consistent error responses
 - ✅ **Authentication & Authorization** - JWT with User/Role/Permission
-- ✅ **Comprehensive Testing** - 40 integration tests with in-memory database
+- ✅ **Device Integration** - Full ZKTeco PyZK integration with remote enrollment
+- ✅ **Comprehensive Testing** - 59 integration tests with in-memory database
 - ✅ **Advanced Query Options** - Pagination, sorting, filtering, includes
 
 ## License

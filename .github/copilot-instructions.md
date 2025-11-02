@@ -3,6 +3,8 @@
 ## Project Overview
 A .NET 9.0 Web API backend for biometric punch clock synchronization and attendance management. The system centralizes staff enrollment, device management, and attendance tracking across multiple ZKTeco biometric devices with a PostgreSQL backend. Attribute-routed controllers inherit shared behavior from a custom `BaseController` to unify query parsing and error handling.
 
+**Status**: Production-ready with JWT authentication, full ZKTeco device integration via PyZK, and comprehensive testing (59 integration tests).
+
 ## Architecture & Design Patterns
 
 ### Controller-Based API
@@ -10,6 +12,7 @@ A .NET 9.0 Web API backend for biometric punch clock synchronization and attenda
 - **Shared Base Class**: Controllers inherit from `BaseController<T>` for consistent query parsing, error handling, and user claim helpers
 - **Constructor DI**: Dependencies injected via constructors (e.g., `StaffController(PunchClockDbContext db, ILogger<StaffController> logger)`)
 - **Example Pattern**: See `Controllers/StaffController.cs` for the canonical CRUD structure
+- **JWT Authentication**: Protected endpoints use `[Authorize]` attribute with role-based claims
 
 ### Entity Framework Core Patterns
 - **Fluent Configuration**: All EF mappings in `PunchClockDbContext.OnModelCreating()` - NEVER use data annotations on models
@@ -44,10 +47,15 @@ ZKTeco Device → PunchLog (raw) → AttendanceRecord (processed)
 - `device_user_id` in DeviceEnrollment stores the device-specific internal ID
 
 ### Device Integration Architecture
+- **PyZK Library**: Python ZKTeco device SDK integrated via Python.NET (pythonnet)
+- **DeviceService**: C# service layer (`Services/DeviceService.cs`) wrapping PyZK operations
+- **PyZKClient**: C# wrapper class for Python interop (`Device/PyZKClient.cs`)
+- **pyzk_wrapper.py**: Python script providing JSON-based device operations
+- **Device Operations**: Connect, disconnect, get users, get attendance, sync staff, enroll fingerprints
 - Devices store connection info: `ip_address`, `port` (default 4370), `manufacturer`
 - `is_online` and `last_heartbeat_at` track connectivity status
 - `device_config` JSONB stores device-specific settings
-- Future: Will integrate with ZKTeco SDK via separate service layer
+- **ZK Simulator**: Full device simulator (`Device/zk_simulator.py`) for testing without hardware
 
 ## Development Workflows
 
@@ -144,10 +152,13 @@ public sealed class StaffController : BaseController<Staff>
 - **PunchLog** ↔ Staff (N:1), Device (N:1)
 - **AttendanceRecord** ↔ Staff (N:1) with unique constraint on (staff_id, attendance_date)
 
-### Authentication Entities (Not Yet Implemented)
+### Authentication Entities (Fully Implemented)
 - **User** ↔ UserRole ↔ Role (M:N)
 - **Role** ↔ RolePermission ↔ Permission (M:N)
 - Permission structure: `{ resource: "staff", action: "create" }`
+- JWT tokens with BCrypt password hashing
+- Claims-based authorization via `[Authorize]` attribute
+- Default seeded user: `admin` / `admin123`
 
 ## Common Tasks & Examples
 
@@ -176,11 +187,30 @@ public sealed class StaffController : BaseController<Staff>
 PunchClockApi/
 ├── Program.cs                    # Startup configuration and middleware wiring
 ├── Controllers/                  # Attribute-routed controllers inheriting BaseController
-│   ├── StaffController.cs
-│   ├── DevicesController.cs
-│   ├── AttendanceController.cs
-│   ├── OrganizationController.cs
-│   └── SystemController.cs
+│   ├── AuthController.cs        # JWT authentication (login, register)
+│   ├── StaffController.cs       # Staff CRUD operations
+│   ├── DevicesController.cs     # Device management & ZK integration
+│   ├── AttendanceController.cs  # Attendance tracking
+│   ├── OrganizationController.cs# Departments & locations
+│   ├── UsersController.cs       # User management
+│   ├── SystemController.cs      # Health checks
+│   └── BaseController.cs        # Shared query parsing & error handling
+├── Services/
+│   ├── DeviceService.cs         # ZKTeco device integration service
+│   └── IDeviceService.cs        # Device service interface
+├── Device/
+│   ├── PyZKClient.cs            # C# wrapper for PyZK
+│   ├── pyzk_wrapper.py          # Python wrapper for ZK devices
+│   ├── zk_simulator.py          # ZK device simulator for testing
+│   ├── setup.py                 # PyZK setup script
+│   └── zk/                      # PyZK library
+│       ├── __init__.py
+│       ├── base.py              # Core ZK protocol implementation
+│       ├── user.py              # User management
+│       ├── attendance.py        # Attendance records
+│       ├── finger.py            # Fingerprint operations
+│       ├── const.py             # Constants
+│       └── exception.py         # Exceptions
 ├── Data/
 │   ├── PunchClockDbContext.cs   # EF Core DbContext with all entity configs
 │   └── DatabaseSeeder.cs        # Development data seeding
@@ -201,6 +231,10 @@ PunchClockApi/
 - `Npgsql.EntityFrameworkCore.PostgreSQL` (9.0.4) - PostgreSQL provider
 - `Microsoft.EntityFrameworkCore.Design` (9.0.10) - Migration tools
 - `Swashbuckle.AspNetCore` (9.0.6) - OpenAPI/Swagger
+- `Microsoft.AspNetCore.Authentication.JwtBearer` (9.0.10) - JWT authentication
+- `System.IdentityModel.Tokens.Jwt` (8.2.1) - JWT token generation
+- `BCrypt.Net-Next` (4.0.3) - Password hashing
+- `Python.Runtime.NETStandard` (3.0.4) - Python.NET interop for PyZK
 
 ### Configuration
 - **Connection String**: `appsettings.Development.json` → PostgreSQL localhost:5432
@@ -224,11 +258,13 @@ PunchClockApi/
 
 ## Next Development Priorities
 
-1. **Authentication/Authorization**: Implement JWT with User/Role/Permission entities
-2. **Device Integration**: ZKTeco SDK client service for real device sync
+1. ~~**Authentication/Authorization**~~ - ✅ **COMPLETED**: JWT with User/Role/Permission entities
+2. ~~**Device Integration**~~ - ✅ **COMPLETED**: ZKTeco SDK client service for real device sync
 3. **Attendance Processing**: Background job to process PunchLogs → AttendanceRecords
 4. **Validation**: Add input validation middleware (FluentValidation recommended)
-5. **Error Handling**: Global exception handler middleware
+5. **Background Jobs**: Implement Hangfire/Quartz for scheduled device sync
+6. **Reporting**: Export endpoints for payroll (CSV/Excel)
+7. **Error Handling**: Enhanced error messages and logging
 
 ## Testing & Debugging
 
@@ -248,7 +284,8 @@ PunchClockApi/
 
 ## Future Integration Points
 
-- **Device Sync Service**: Separate background service using Hangfire/Quartz to poll devices
-- **PYZK Python Library**: May use as device communication layer (via subprocess or HTTP wrapper)
+- **Background Jobs**: Hangfire/Quartz for scheduled device sync operations
 - **Real-time Updates**: SignalR for live attendance dashboard
 - **Reporting**: Separate reporting engine for payroll exports (CSV/Excel)
+- **Caching**: Redis for device connection pooling and query caching
+- **Notifications**: Email/SMS alerts for anomalies and missing punches
