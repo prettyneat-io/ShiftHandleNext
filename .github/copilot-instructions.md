@@ -184,45 +184,71 @@ public sealed class StaffController : BaseController<Staff>
 
 ## Project File Structure
 ```
-PunchClockApi/
-├── Program.cs                    # Startup configuration and middleware wiring
-├── Controllers/                  # Attribute-routed controllers inheriting BaseController
-│   ├── AuthController.cs        # JWT authentication (login, register)
-│   ├── StaffController.cs       # Staff CRUD operations
-│   ├── DevicesController.cs     # Device management & ZK integration
-│   ├── AttendanceController.cs  # Attendance tracking
-│   ├── OrganizationController.cs# Departments & locations
-│   ├── UsersController.cs       # User management
-│   ├── SystemController.cs      # Health checks
-│   └── BaseController.cs        # Shared query parsing & error handling
-├── Services/
-│   ├── DeviceService.cs         # ZKTeco device integration service
-│   └── IDeviceService.cs        # Device service interface
-├── Device/
-│   ├── PyZKClient.cs            # C# wrapper for PyZK
-│   ├── pyzk_wrapper.py          # Python wrapper for ZK devices
-│   ├── zk_simulator.py          # ZK device simulator for testing
-│   ├── setup.py                 # PyZK setup script
-│   └── zk/                      # PyZK library
-│       ├── __init__.py
-│       ├── base.py              # Core ZK protocol implementation
-│       ├── user.py              # User management
-│       ├── attendance.py        # Attendance records
-│       ├── finger.py            # Fingerprint operations
-│       ├── const.py             # Constants
-│       └── exception.py         # Exceptions
-├── Data/
-│   ├── PunchClockDbContext.cs   # EF Core DbContext with all entity configs
-│   └── DatabaseSeeder.cs        # Development data seeding
-├── Models/                       # 6 files grouping related entities
-│   ├── Staff.cs                 # Staff, BiometricTemplate
-│   ├── Device.cs                # Device, DeviceEnrollment
-│   ├── Attendance.cs            # PunchLog, AttendanceRecord
-│   ├── Organization.cs          # Department, Location
-│   ├── User.cs                  # User, Role, Permission (auth entities)
-│   └── Audit.cs                 # SyncLog, AuditLog, ExportLog
-├── Migrations/                   # EF Core migrations (auto-generated)
-└── appsettings.Development.json # Connection string and seed config
+ShiftHandleNext/
+├── README.md                     # Main project README with quick start
+├── docker-compose.yml            # PostgreSQL database setup
+├── docs/                         # Centralized documentation
+│   ├── api/                      # API documentation
+│   │   ├── api-reference.md      # Complete API endpoint reference
+│   │   └── system-specification.md # Technical specification
+│   ├── guides/                   # Feature guides
+│   │   ├── FINGERPRINT_ENROLLMENT_GUIDE.md
+│   │   ├── ATTENDANCE_PROCESSING_GUIDE.md
+│   │   └── STAFF_ENROLLMENT_AUTOMATION.md
+│   └── development/              # Development documentation
+│       ├── project-summary.md    # Complete project overview
+│       └── testing-guide.md      # Testing documentation
+├── PunchClockApi/
+│   ├── Program.cs                # Startup configuration and middleware wiring
+│   ├── Controllers/              # Attribute-routed controllers inheriting BaseController
+│   │   ├── AuthController.cs    # JWT authentication (login, register)
+│   │   ├── StaffController.cs   # Staff CRUD operations
+│   │   ├── DevicesController.cs # Device management & ZK integration
+│   │   ├── AttendanceController.cs # Attendance tracking
+│   │   ├── OrganizationController.cs # Departments & locations
+│   │   ├── UsersController.cs   # User management
+│   │   ├── SystemController.cs  # Health checks
+│   │   └── BaseController.cs    # Shared query parsing & error handling
+│   ├── Services/
+│   │   ├── DeviceService.cs     # ZKTeco device integration service
+│   │   ├── IDeviceService.cs    # Device service interface
+│   │   ├── AttendanceProcessingService.cs # Punch log processing
+│   │   ├── AttendanceProcessingJob.cs     # Background job
+│   │   └── DeviceSyncJob.cs     # Device sync background job
+│   ├── Device/
+│   │   ├── PyZKClient.cs        # C# wrapper for PyZK
+│   │   ├── pyzk_wrapper.py      # Python wrapper for ZK devices
+│   │   ├── zk_simulator.py      # ZK device simulator for testing
+│   │   ├── ZK_SIMULATOR_README.md # Simulator documentation
+│   │   └── zk/                  # PyZK library
+│   │       ├── base.py          # Core ZK protocol implementation
+│   │       ├── user.py          # User management
+│   │       ├── attendance.py    # Attendance records
+│   │       ├── finger.py        # Fingerprint operations
+│   │       └── ...
+│   ├── Data/
+│   │   ├── PunchClockDbContext.cs   # EF Core DbContext with all entity configs
+│   │   └── DatabaseSeeder.cs        # Development data seeding
+│   ├── Models/                   # 6 files grouping related entities
+│   │   ├── Staff.cs             # Staff, BiometricTemplate
+│   │   ├── Device.cs            # Device, DeviceEnrollment
+│   │   ├── Attendance.cs        # PunchLog, AttendanceRecord
+│   │   ├── Organization.cs      # Department, Location
+│   │   ├── User.cs              # User, Role, Permission (auth entities)
+│   │   └── Audit.cs             # SyncLog, AuditLog, ExportLog
+│   ├── Migrations/              # EF Core migrations (auto-generated)
+│   ├── README.md                # API-specific documentation
+│   └── appsettings.Development.json # Connection string and seed config
+└── PunchClockApi.Tests/
+    ├── AuthenticationTests.cs   # JWT auth tests (8 tests)
+    ├── QueryOptionsTests.cs     # Query parameter tests (20 tests)
+    ├── ApiEndpointTests.cs      # CRUD endpoint tests (12 tests)
+    ├── DeviceIntegrationTests.cs # ZKTeco device tests (19 tests)
+    ├── AttendanceProcessingTests.cs # Attendance processing tests
+    ├── BackgroundJobTests.cs    # Hangfire job tests
+    ├── TestWebApplicationFactory.cs # Test infrastructure
+    ├── IntegrationTestBase.cs   # Base test class
+    └── README.md                # Test documentation
 ```
 
 ## Environment & Dependencies
@@ -260,11 +286,12 @@ PunchClockApi/
 
 1. ~~**Authentication/Authorization**~~ - ✅ **COMPLETED**: JWT with User/Role/Permission entities
 2. ~~**Device Integration**~~ - ✅ **COMPLETED**: ZKTeco SDK client service for real device sync
-3. **Attendance Processing**: Background job to process PunchLogs → AttendanceRecords
-4. **Validation**: Add input validation middleware (FluentValidation recommended)
-5. **Background Jobs**: Implement Hangfire/Quartz for scheduled device sync
-6. **Reporting**: Export endpoints for payroll (CSV/Excel)
-7. **Error Handling**: Enhanced error messages and logging
+3. ~~**Attendance Processing**~~ - ✅ **COMPLETED**: Background job to process PunchLogs → AttendanceRecords
+4. ~~**Background Jobs**~~ - ✅ **COMPLETED**: Hangfire for scheduled device sync and attendance processing
+5. **Shift Management**: Implement shift definitions and assignments
+6. **Validation**: Add input validation middleware (FluentValidation recommended)
+7. **Reporting**: Export endpoints for payroll (CSV/Excel)
+8. **Error Handling**: Enhanced error messages and logging
 
 ## Testing & Debugging
 
@@ -284,8 +311,8 @@ PunchClockApi/
 
 ## Future Integration Points
 
-- **Background Jobs**: Hangfire/Quartz for scheduled device sync operations
 - **Real-time Updates**: SignalR for live attendance dashboard
 - **Reporting**: Separate reporting engine for payroll exports (CSV/Excel)
 - **Caching**: Redis for device connection pooling and query caching
 - **Notifications**: Email/SMS alerts for anomalies and missing punches
+- **Multi-tenancy**: Support for multiple organizations/companies

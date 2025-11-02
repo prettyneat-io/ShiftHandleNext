@@ -270,12 +270,9 @@ WHERE de.sync_status = 'FAILED';
 
 Potential improvements:
 1. **Smart Sync**: Only sync staff that changed since last sync
-2. **Location-Based Jobs**: Separate jobs per location for better scaling
-3. **Real-time Sync**: Push staff changes immediately via SignalR
-4. **Rollback Capability**: Undo failed syncs automatically
-5. **Notification System**: Email/SMS alerts for sync failures
-6. **Metrics Dashboard**: Visual analytics for enrollment statistics
-7. **Batch Operations**: Bulk enroll/remove operations for efficiency
+1. **Notification System**: Email SMTP alerts for sync failures
+1. **Metrics Dashboard**: analytics for enrollment statistics dashboard
+1. **Batch Operations**: Bulk enroll/remove operations for efficiency
 
 ## API Endpoints
 

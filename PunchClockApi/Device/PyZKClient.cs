@@ -15,28 +15,28 @@ namespace PyZK.DotNet
         public bool Success { get; set; }
 
         [JsonPropertyName("message")]
-        public string Message { get; set; }
+        public string Message { get; set; } = "";
 
         [JsonPropertyName("device_info")]
-        public DeviceDetails DeviceDetails { get; set; }
+        public DeviceDetails DeviceDetails { get; set; } = null!;
 
         [JsonPropertyName("error")]
-        public string Error { get; set; }
+        public string Error { get; set; } = "";
     }
 
     public class DeviceDetails
     {
         [JsonPropertyName("firmware_version")]
-        public string FirmwareVersion { get; set; }
+        public string FirmwareVersion { get; set; } = "";
 
         [JsonPropertyName("serial_number")]
-        public string SerialNumber { get; set; }
+        public string SerialNumber { get; set; } = "";
 
         [JsonPropertyName("platform")]
-        public string Platform { get; set; }
+        public string Platform { get; set; } = "";
 
         [JsonPropertyName("device_name")]
-        public string DeviceName { get; set; }
+        public string DeviceName { get; set; } = "";
     }
 
     /// <summary>
@@ -48,22 +48,22 @@ namespace PyZK.DotNet
         public bool Success { get; set; }
 
         [JsonPropertyName("firmware_version")]
-        public string FirmwareVersion { get; set; }
+        public string FirmwareVersion { get; set; } = "";
 
         [JsonPropertyName("serial_number")]
-        public string SerialNumber { get; set; }
+        public string SerialNumber { get; set; } = "";
 
         [JsonPropertyName("platform")]
-        public string Platform { get; set; }
+        public string Platform { get; set; } = "";
 
         [JsonPropertyName("device_name")]
-        public string DeviceName { get; set; }
+        public string DeviceName { get; set; } = "";
 
         [JsonPropertyName("mac_address")]
-        public string MacAddress { get; set; }
+        public string MacAddress { get; set; } = "";
 
         [JsonPropertyName("device_time")]
-        public string DeviceTime { get; set; }
+        public string DeviceTime { get; set; } = "";
 
         [JsonPropertyName("users_count")]
         public int UsersCount { get; set; }
@@ -81,7 +81,7 @@ namespace PyZK.DotNet
         public int RecordsCount { get; set; }
 
         [JsonPropertyName("error")]
-        public string Error { get; set; }
+        public string Error { get; set; } = "";
     }
 
     /// <summary>
@@ -93,22 +93,22 @@ namespace PyZK.DotNet
         public int Uid { get; set; }
 
         [JsonPropertyName("name")]
-        public string Name { get; set; }
+        public string Name { get; set; } = "";
 
         [JsonPropertyName("privilege")]
         public int Privilege { get; set; }
 
         [JsonPropertyName("privilege_name")]
-        public string PrivilegeName { get; set; }
+        public string PrivilegeName { get; set; } = "";
 
         [JsonPropertyName("password")]
-        public string Password { get; set; }
+        public string Password { get; set; } = "";
 
         [JsonPropertyName("group_id")]
-        public string GroupId { get; set; }
+        public string GroupId { get; set; } = "";
 
         [JsonPropertyName("user_id")]
-        public string UserId { get; set; }
+        public string UserId { get; set; } = "";
 
         [JsonPropertyName("card")]
         public long Card { get; set; }
@@ -126,10 +126,10 @@ namespace PyZK.DotNet
         public int Count { get; set; }
 
         [JsonPropertyName("users")]
-        public List<ZKUser> Users { get; set; }
+        public List<ZKUser> Users { get; set; } = [];
 
         [JsonPropertyName("error")]
-        public string Error { get; set; }
+        public string Error { get; set; } = "";
     }
 
     /// <summary>
@@ -141,10 +141,10 @@ namespace PyZK.DotNet
         public int Uid { get; set; }
 
         [JsonPropertyName("user_id")]
-        public string UserId { get; set; }
+        public string UserId { get; set; } = "";
 
         [JsonPropertyName("timestamp")]
-        public string Timestamp { get; set; }
+        public string Timestamp { get; set; } = "";
 
         [JsonPropertyName("status")]
         public int Status { get; set; }
@@ -176,10 +176,10 @@ namespace PyZK.DotNet
         public int Count { get; set; }
 
         [JsonPropertyName("attendances")]
-        public List<Attendance> Attendances { get; set; }
+        public List<Attendance> Attendances { get; set; } = [];
 
         [JsonPropertyName("error")]
-        public string Error { get; set; }
+        public string Error { get; set; } = "";
     }
 
     /// <summary>
@@ -191,10 +191,10 @@ namespace PyZK.DotNet
         public bool Success { get; set; }
 
         [JsonPropertyName("message")]
-        public string Message { get; set; }
+        public string Message { get; set; } = "";
 
         [JsonPropertyName("error")]
-        public string Error { get; set; }
+        public string Error { get; set; } = "";
     }
 
     /// <summary>
@@ -209,7 +209,7 @@ namespace PyZK.DotNet
         public bool Locked { get; set; }
 
         [JsonPropertyName("error")]
-        public string Error { get; set; }
+        public string Error { get; set; } = "";
     }
 
     /// <summary>
@@ -221,10 +221,10 @@ namespace PyZK.DotNet
         public bool Success { get; set; }
 
         [JsonPropertyName("face_version")]
-        public string FaceVersion { get; set; }
+        public string FaceVersion { get; set; } = "";
 
         [JsonPropertyName("error")]
-        public string Error { get; set; }
+        public string Error { get; set; } = "";
     }
 
     /// <summary>
@@ -236,10 +236,10 @@ namespace PyZK.DotNet
         public bool Success { get; set; }
 
         [JsonPropertyName("fingerprint_version")]
-        public string FingerprintVersion { get; set; }
+        public string FingerprintVersion { get; set; } = "";
 
         [JsonPropertyName("error")]
-        public string Error { get; set; }
+        public string Error { get; set; } = "";
     }
 
     /// <summary>
@@ -251,10 +251,10 @@ namespace PyZK.DotNet
         public bool Success { get; set; }
 
         [JsonPropertyName("network")]
-        public string Network { get; set; }
+        public string Network { get; set; } = "";
 
         [JsonPropertyName("error")]
-        public string Error { get; set; }
+        public string Error { get; set; } = "";
     }
 
     /// <summary>
@@ -269,7 +269,7 @@ namespace PyZK.DotNet
         public int PinWidth { get; set; }
 
         [JsonPropertyName("error")]
-        public string Error { get; set; }
+        public string Error { get; set; } = "";
     }
 
     /// <summary>
@@ -284,7 +284,7 @@ namespace PyZK.DotNet
         public int ExtendFormat { get; set; }
 
         [JsonPropertyName("error")]
-        public string Error { get; set; }
+        public string Error { get; set; } = "";
     }
 
     /// <summary>
@@ -299,7 +299,7 @@ namespace PyZK.DotNet
         public int UserExtendFormat { get; set; }
 
         [JsonPropertyName("error")]
-        public string Error { get; set; }
+        public string Error { get; set; } = "";
     }
 
     /// <summary>
@@ -314,7 +314,7 @@ namespace PyZK.DotNet
         public bool FaceFunctionEnabled { get; set; }
 
         [JsonPropertyName("error")]
-        public string Error { get; set; }
+        public string Error { get; set; } = "";
     }
 
     /// <summary>
@@ -329,7 +329,7 @@ namespace PyZK.DotNet
         public bool OldFirmwareCompatible { get; set; }
 
         [JsonPropertyName("error")]
-        public string Error { get; set; }
+        public string Error { get; set; } = "";
     }
 
     /// <summary>
@@ -362,10 +362,10 @@ namespace PyZK.DotNet
         public int Count { get; set; }
 
         [JsonPropertyName("templates")]
-        public List<Template> Templates { get; set; }
+        public List<Template> Templates { get; set; } = [];
 
         [JsonPropertyName("error")]
-        public string Error { get; set; }
+        public string Error { get; set; } = "";
     }
 
     /// <summary>
@@ -377,10 +377,10 @@ namespace PyZK.DotNet
         public bool Success { get; set; }
 
         [JsonPropertyName("template")]
-        public Template Template { get; set; }
+        public Template Template { get; set; } = new();
 
         [JsonPropertyName("error")]
-        public string Error { get; set; }
+        public string Error { get; set; } = "";
     }
 
     /// <summary>
@@ -395,7 +395,7 @@ namespace PyZK.DotNet
         public bool Cancelled { get; set; }
 
         [JsonPropertyName("error")]
-        public string Error { get; set; }
+        public string Error { get; set; } = "";
     }
 
     /// <summary>
@@ -426,7 +426,7 @@ namespace PyZK.DotNet
         /// </summary>
         /// <param name="pythonDll">Optional path to Python DLL (e.g., "python39.dll")</param>
         /// <param name="pythonHome">Optional Python home directory</param>
-        public static void InitializePython(string pythonDll = null, string pythonHome = null)
+        public static void InitializePython(string? pythonDll = null, string? pythonHome = null)
         {
             if (!PythonEngine.IsInitialized)
             {
@@ -511,7 +511,7 @@ namespace PyZK.DotNet
             {
                 dynamic result = _wrapper.connect();
                 var jsonResult = PythonJsonToString(result);
-                return JsonSerializer.Deserialize<DeviceInfo>(jsonResult);
+                return JsonSerializer.Deserialize<DeviceInfo>(jsonResult)!;
             }
         }
 
@@ -525,7 +525,7 @@ namespace PyZK.DotNet
             {
                 dynamic result = _wrapper.disconnect();
                 var jsonResult = PythonJsonToString(result);
-                return JsonSerializer.Deserialize<OperationResponse>(jsonResult);
+                return JsonSerializer.Deserialize<OperationResponse>(jsonResult)!;
             }
         }
 
@@ -538,7 +538,7 @@ namespace PyZK.DotNet
             using (Py.GIL())
             {
                 string jsonResult = (string)_wrapper.get_users_json();
-                return JsonSerializer.Deserialize<UsersResponse>(jsonResult);
+                return JsonSerializer.Deserialize<UsersResponse>(jsonResult)!;
             }
         }
 
@@ -551,7 +551,7 @@ namespace PyZK.DotNet
             using (Py.GIL())
             {
                 string jsonResult = (string)_wrapper.get_attendance_json();
-                return JsonSerializer.Deserialize<AttendanceResponse>(jsonResult);
+                return JsonSerializer.Deserialize<AttendanceResponse>(jsonResult)!;
             }
         }
 
@@ -564,7 +564,7 @@ namespace PyZK.DotNet
             using (Py.GIL())
             {
                 string jsonResult = (string)_wrapper.get_device_info_json();
-                return JsonSerializer.Deserialize<DetailedDeviceInfo>(jsonResult);
+                return JsonSerializer.Deserialize<DetailedDeviceInfo>(jsonResult)!;
             }
         }
 
@@ -586,7 +586,7 @@ namespace PyZK.DotNet
             using (Py.GIL())
             {
                 string jsonResult = (string)_wrapper.add_user(uid, name, privilege, password, groupId, userId, card);
-                return JsonSerializer.Deserialize<OperationResponse>(jsonResult);
+                return JsonSerializer.Deserialize<OperationResponse>(jsonResult)!;
             }
         }
 
@@ -600,7 +600,7 @@ namespace PyZK.DotNet
             using (Py.GIL())
             {
                 string jsonResult = (string)_wrapper.delete_user(uid: uid);
-                return JsonSerializer.Deserialize<OperationResponse>(jsonResult);
+                return JsonSerializer.Deserialize<OperationResponse>(jsonResult)!;
             }
         }
 
@@ -614,7 +614,7 @@ namespace PyZK.DotNet
             using (Py.GIL())
             {
                 string jsonResult = (string)_wrapper.delete_user(user_id: userId);
-                return JsonSerializer.Deserialize<OperationResponse>(jsonResult);
+                return JsonSerializer.Deserialize<OperationResponse>(jsonResult)!;
             }
         }
 
@@ -627,9 +627,9 @@ namespace PyZK.DotNet
         {
             using (Py.GIL())
             {
-                string isoTimestamp = timestamp?.ToString("o");
+                string? isoTimestamp = timestamp?.ToString("o");
                 string jsonResult = (string)_wrapper.set_time(isoTimestamp);
-                return JsonSerializer.Deserialize<OperationResponse>(jsonResult);
+                return JsonSerializer.Deserialize<OperationResponse>(jsonResult)!;
             }
         }
 
@@ -642,7 +642,7 @@ namespace PyZK.DotNet
             using (Py.GIL())
             {
                 string jsonResult = (string)_wrapper.clear_attendance();
-                return JsonSerializer.Deserialize<OperationResponse>(jsonResult);
+                return JsonSerializer.Deserialize<OperationResponse>(jsonResult)!;
             }
         }
 
@@ -656,7 +656,7 @@ namespace PyZK.DotNet
             using (Py.GIL())
             {
                 string jsonResult = (string)_wrapper.test_voice(index);
-                return JsonSerializer.Deserialize<OperationResponse>(jsonResult);
+                return JsonSerializer.Deserialize<OperationResponse>(jsonResult)!;
             }
         }
 
@@ -669,7 +669,7 @@ namespace PyZK.DotNet
             using (Py.GIL())
             {
                 string jsonResult = (string)_wrapper.restart_device();
-                return JsonSerializer.Deserialize<OperationResponse>(jsonResult);
+                return JsonSerializer.Deserialize<OperationResponse>(jsonResult)!;
             }
         }
 
@@ -682,7 +682,7 @@ namespace PyZK.DotNet
             using (Py.GIL())
             {
                 string jsonResult = (string)_wrapper.poweroff_device();
-                return JsonSerializer.Deserialize<OperationResponse>(jsonResult);
+                return JsonSerializer.Deserialize<OperationResponse>(jsonResult)!;
             }
         }
 
@@ -696,7 +696,7 @@ namespace PyZK.DotNet
             using (Py.GIL())
             {
                 string jsonResult = (string)_wrapper.unlock_door(time);
-                return JsonSerializer.Deserialize<OperationResponse>(jsonResult);
+                return JsonSerializer.Deserialize<OperationResponse>(jsonResult)!;
             }
         }
 
@@ -709,7 +709,7 @@ namespace PyZK.DotNet
             using (Py.GIL())
             {
                 string jsonResult = (string)_wrapper.get_lock_state();
-                return JsonSerializer.Deserialize<LockStateResponse>(jsonResult);
+                return JsonSerializer.Deserialize<LockStateResponse>(jsonResult)!;
             }
         }
 
@@ -724,7 +724,7 @@ namespace PyZK.DotNet
             using (Py.GIL())
             {
                 string jsonResult = (string)_wrapper.write_lcd(lineNumber, text);
-                return JsonSerializer.Deserialize<OperationResponse>(jsonResult);
+                return JsonSerializer.Deserialize<OperationResponse>(jsonResult)!;
             }
         }
 
@@ -737,7 +737,7 @@ namespace PyZK.DotNet
             using (Py.GIL())
             {
                 string jsonResult = (string)_wrapper.clear_lcd();
-                return JsonSerializer.Deserialize<OperationResponse>(jsonResult);
+                return JsonSerializer.Deserialize<OperationResponse>(jsonResult)!;
             }
         }
 
@@ -750,7 +750,7 @@ namespace PyZK.DotNet
             using (Py.GIL())
             {
                 string jsonResult = (string)_wrapper.refresh_data();
-                return JsonSerializer.Deserialize<OperationResponse>(jsonResult);
+                return JsonSerializer.Deserialize<OperationResponse>(jsonResult)!;
             }
         }
 
@@ -763,7 +763,7 @@ namespace PyZK.DotNet
             using (Py.GIL())
             {
                 string jsonResult = (string)_wrapper.free_data();
-                return JsonSerializer.Deserialize<OperationResponse>(jsonResult);
+                return JsonSerializer.Deserialize<OperationResponse>(jsonResult)!;
             }
         }
 
@@ -776,7 +776,7 @@ namespace PyZK.DotNet
             using (Py.GIL())
             {
                 string jsonResult = (string)_wrapper.get_face_version();
-                return JsonSerializer.Deserialize<FaceVersionResponse>(jsonResult);
+                return JsonSerializer.Deserialize<FaceVersionResponse>(jsonResult)!;
             }
         }
 
@@ -789,7 +789,7 @@ namespace PyZK.DotNet
             using (Py.GIL())
             {
                 string jsonResult = (string)_wrapper.get_fp_version();
-                return JsonSerializer.Deserialize<FingerprintVersionResponse>(jsonResult);
+                return JsonSerializer.Deserialize<FingerprintVersionResponse>(jsonResult)!;
             }
         }
 
@@ -802,7 +802,7 @@ namespace PyZK.DotNet
             using (Py.GIL())
             {
                 string jsonResult = (string)_wrapper.get_network_params();
-                return JsonSerializer.Deserialize<NetworkParamsResponse>(jsonResult);
+                return JsonSerializer.Deserialize<NetworkParamsResponse>(jsonResult)!;
             }
         }
 
@@ -815,7 +815,7 @@ namespace PyZK.DotNet
             using (Py.GIL())
             {
                 string jsonResult = (string)_wrapper.get_pin_width();
-                return JsonSerializer.Deserialize<PinWidthResponse>(jsonResult);
+                return JsonSerializer.Deserialize<PinWidthResponse>(jsonResult)!;
             }
         }
 
@@ -828,7 +828,7 @@ namespace PyZK.DotNet
             using (Py.GIL())
             {
                 string jsonResult = (string)_wrapper.get_extend_fmt();
-                return JsonSerializer.Deserialize<ExtendFormatResponse>(jsonResult);
+                return JsonSerializer.Deserialize<ExtendFormatResponse>(jsonResult)!;
             }
         }
 
@@ -841,7 +841,7 @@ namespace PyZK.DotNet
             using (Py.GIL())
             {
                 string jsonResult = (string)_wrapper.get_user_extend_fmt();
-                return JsonSerializer.Deserialize<UserExtendFormatResponse>(jsonResult);
+                return JsonSerializer.Deserialize<UserExtendFormatResponse>(jsonResult)!;
             }
         }
 
@@ -854,7 +854,7 @@ namespace PyZK.DotNet
             using (Py.GIL())
             {
                 string jsonResult = (string)_wrapper.get_face_fun_on();
-                return JsonSerializer.Deserialize<FaceFunctionResponse>(jsonResult);
+                return JsonSerializer.Deserialize<FaceFunctionResponse>(jsonResult)!;
             }
         }
 
@@ -867,7 +867,7 @@ namespace PyZK.DotNet
             using (Py.GIL())
             {
                 string jsonResult = (string)_wrapper.get_compat_old_firmware();
-                return JsonSerializer.Deserialize<FirmwareCompatibilityResponse>(jsonResult);
+                return JsonSerializer.Deserialize<FirmwareCompatibilityResponse>(jsonResult)!;
             }
         }
 
@@ -880,7 +880,7 @@ namespace PyZK.DotNet
             using (Py.GIL())
             {
                 string jsonResult = (string)_wrapper.get_templates_json();
-                return JsonSerializer.Deserialize<TemplatesResponse>(jsonResult);
+                return JsonSerializer.Deserialize<TemplatesResponse>(jsonResult)!;
             }
         }
 
@@ -895,7 +895,7 @@ namespace PyZK.DotNet
             using (Py.GIL())
             {
                 string jsonResult = (string)_wrapper.get_user_template_json(uid: uid, temp_id: tempId);
-                return JsonSerializer.Deserialize<TemplateResponse>(jsonResult);
+                return JsonSerializer.Deserialize<TemplateResponse>(jsonResult)!;
             }
         }
 
@@ -910,7 +910,7 @@ namespace PyZK.DotNet
             using (Py.GIL())
             {
                 string jsonResult = (string)_wrapper.get_user_template_json(temp_id: tempId, user_id: userId);
-                return JsonSerializer.Deserialize<TemplateResponse>(jsonResult);
+                return JsonSerializer.Deserialize<TemplateResponse>(jsonResult)!;
             }
         }
 
@@ -926,7 +926,7 @@ namespace PyZK.DotNet
             using (Py.GIL())
             {
                 string jsonResult = (string)_wrapper.delete_user_template(uid, tempId, userId);
-                return JsonSerializer.Deserialize<OperationResponse>(jsonResult);
+                return JsonSerializer.Deserialize<OperationResponse>(jsonResult)!;
             }
         }
 
@@ -942,7 +942,7 @@ namespace PyZK.DotNet
             using (Py.GIL())
             {
                 string jsonResult = (string)_wrapper.enroll_user(uid, tempId, userId);
-                return JsonSerializer.Deserialize<OperationResponse>(jsonResult);
+                return JsonSerializer.Deserialize<OperationResponse>(jsonResult)!;
             }
         }
 
@@ -955,7 +955,7 @@ namespace PyZK.DotNet
             using (Py.GIL())
             {
                 string jsonResult = (string)_wrapper.verify_user();
-                return JsonSerializer.Deserialize<OperationResponse>(jsonResult);
+                return JsonSerializer.Deserialize<OperationResponse>(jsonResult)!;
             }
         }
 
@@ -968,7 +968,7 @@ namespace PyZK.DotNet
             using (Py.GIL())
             {
                 string jsonResult = (string)_wrapper.cancel_capture();
-                return JsonSerializer.Deserialize<CancelCaptureResponse>(jsonResult);
+                return JsonSerializer.Deserialize<CancelCaptureResponse>(jsonResult)!;
             }
         }
 
@@ -982,7 +982,7 @@ namespace PyZK.DotNet
             using (Py.GIL())
             {
                 string jsonResult = (string)_wrapper.reg_event(flags);
-                return JsonSerializer.Deserialize<OperationResponse>(jsonResult);
+                return JsonSerializer.Deserialize<OperationResponse>(jsonResult)!;
             }
         }
 
@@ -995,7 +995,7 @@ namespace PyZK.DotNet
             using (Py.GIL())
             {
                 string jsonResult = (string)_wrapper.set_sdk_build_1();
-                return JsonSerializer.Deserialize<OperationResponse>(jsonResult);
+                return JsonSerializer.Deserialize<OperationResponse>(jsonResult)!;
             }
         }
 
@@ -1009,7 +1009,7 @@ namespace PyZK.DotNet
             using (Py.GIL())
             {
                 string jsonResult = (string)_wrapper.clear_data();
-                return JsonSerializer.Deserialize<OperationResponse>(jsonResult);
+                return JsonSerializer.Deserialize<OperationResponse>(jsonResult)!;
             }
         }
 
@@ -1022,7 +1022,7 @@ namespace PyZK.DotNet
             using (Py.GIL())
             {
                 string jsonResult = (string)_wrapper.enable_device();
-                return JsonSerializer.Deserialize<OperationResponse>(jsonResult);
+                return JsonSerializer.Deserialize<OperationResponse>(jsonResult)!;
             }
         }
 
@@ -1035,7 +1035,7 @@ namespace PyZK.DotNet
             using (Py.GIL())
             {
                 string jsonResult = (string)_wrapper.disable_device();
-                return JsonSerializer.Deserialize<OperationResponse>(jsonResult);
+                return JsonSerializer.Deserialize<OperationResponse>(jsonResult)!;
             }
         }
 

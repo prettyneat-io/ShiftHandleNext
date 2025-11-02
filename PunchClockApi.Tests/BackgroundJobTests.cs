@@ -590,4 +590,432 @@ public sealed class BackgroundJobTests : IAsyncLifetime
         syncLog.Status.Should().Be("SUCCESS");
         syncLog.RecordsSynced.Should().Be(15);
     }
+
+    [Fact]
+    public async Task RemoveInactiveStaffFromAllDevices_RemovesFromAllActiveDevices()
+    {
+        // Arrange
+        var device1 = new Device
+        {
+            DeviceId = Guid.NewGuid(),
+            DeviceName = "Device 1",
+            DeviceSerial = "ZK001",
+            IpAddress = "192.168.1.100",
+            Port = 4370,
+            Manufacturer = "ZKTeco",
+            LocationId = _testLocation.LocationId,
+            IsActive = true,
+            IsOnline = true,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        var device2 = new Device
+        {
+            DeviceId = Guid.NewGuid(),
+            DeviceName = "Device 2",
+            DeviceSerial = "ZK002",
+            IpAddress = "192.168.1.101",
+            Port = 4370,
+            Manufacturer = "ZKTeco",
+            LocationId = _testLocation.LocationId,
+            IsActive = true,
+            IsOnline = true,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        var device3 = new Device // Inactive device - should not be processed
+        {
+            DeviceId = Guid.NewGuid(),
+            DeviceName = "Device 3",
+            DeviceSerial = "ZK003",
+            IpAddress = "192.168.1.102",
+            Port = 4370,
+            Manufacturer = "ZKTeco",
+            LocationId = _testLocation.LocationId,
+            IsActive = false,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        _db.Devices.AddRange(device1, device2, device3);
+        await _db.SaveChangesAsync();
+
+        // Mock successful removal with different counts
+        _mockDeviceService
+            .Setup(s => s.RemoveInactiveStaffFromDeviceAsync(device1.DeviceId))
+            .ReturnsAsync(new SyncResult
+            {
+                Success = true,
+                RecordsDeleted = 3,
+                Message = "Removed 3 inactive staff"
+            });
+
+        _mockDeviceService
+            .Setup(s => s.RemoveInactiveStaffFromDeviceAsync(device2.DeviceId))
+            .ReturnsAsync(new SyncResult
+            {
+                Success = true,
+                RecordsDeleted = 2,
+                Message = "Removed 2 inactive staff"
+            });
+
+        // Act
+        await _deviceSyncJob.RemoveInactiveStaffFromAllDevicesAsync();
+
+        // Assert
+        _mockDeviceService.Verify(s => s.RemoveInactiveStaffFromDeviceAsync(device1.DeviceId), Times.Once);
+        _mockDeviceService.Verify(s => s.RemoveInactiveStaffFromDeviceAsync(device2.DeviceId), Times.Once);
+        _mockDeviceService.Verify(s => s.RemoveInactiveStaffFromDeviceAsync(device3.DeviceId), Times.Never);
+    }
+
+    [Fact]
+    public async Task RemoveInactiveStaffFromAllDevices_SkipsOfflineDevices()
+    {
+        // Arrange
+        var onlineDevice = new Device
+        {
+            DeviceId = Guid.NewGuid(),
+            DeviceName = "Online Device",
+            DeviceSerial = "ZK001",
+            IpAddress = "192.168.1.100",
+            Port = 4370,
+            Manufacturer = "ZKTeco",
+            LocationId = _testLocation.LocationId,
+            IsActive = true,
+            IsOnline = true,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        var offlineDevice = new Device
+        {
+            DeviceId = Guid.NewGuid(),
+            DeviceName = "Offline Device",
+            DeviceSerial = "ZK002",
+            IpAddress = "192.168.1.101",
+            Port = 4370,
+            Manufacturer = "ZKTeco",
+            LocationId = _testLocation.LocationId,
+            IsActive = true,
+            IsOnline = false, // Device is offline
+            LastHeartbeatAt = DateTime.UtcNow.AddHours(-3),
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        _db.Devices.AddRange(onlineDevice, offlineDevice);
+        await _db.SaveChangesAsync();
+
+        _mockDeviceService
+            .Setup(s => s.RemoveInactiveStaffFromDeviceAsync(onlineDevice.DeviceId))
+            .ReturnsAsync(new SyncResult
+            {
+                Success = true,
+                RecordsDeleted = 5,
+                Message = "Removed 5 inactive staff"
+            });
+
+        // Act
+        await _deviceSyncJob.RemoveInactiveStaffFromAllDevicesAsync();
+
+        // Assert
+        _mockDeviceService.Verify(s => s.RemoveInactiveStaffFromDeviceAsync(onlineDevice.DeviceId), Times.Once);
+        _mockDeviceService.Verify(s => s.RemoveInactiveStaffFromDeviceAsync(offlineDevice.DeviceId), Times.Never);
+    }
+
+    [Fact]
+    public async Task RemoveInactiveStaffFromAllDevices_HandlesDeviceErrors_ContinuesWithOthers()
+    {
+        // Arrange
+        var device1 = new Device
+        {
+            DeviceId = Guid.NewGuid(),
+            DeviceName = "Device 1",
+            DeviceSerial = "ZK001",
+            IpAddress = "192.168.1.100",
+            Port = 4370,
+            Manufacturer = "ZKTeco",
+            LocationId = _testLocation.LocationId,
+            IsActive = true,
+            IsOnline = true,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        var device2 = new Device
+        {
+            DeviceId = Guid.NewGuid(),
+            DeviceName = "Device 2",
+            DeviceSerial = "ZK002",
+            IpAddress = "192.168.1.101",
+            Port = 4370,
+            Manufacturer = "ZKTeco",
+            LocationId = _testLocation.LocationId,
+            IsActive = true,
+            IsOnline = true,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        var device3 = new Device
+        {
+            DeviceId = Guid.NewGuid(),
+            DeviceName = "Device 3",
+            DeviceSerial = "ZK003",
+            IpAddress = "192.168.1.102",
+            Port = 4370,
+            Manufacturer = "ZKTeco",
+            LocationId = _testLocation.LocationId,
+            IsActive = true,
+            IsOnline = true,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        _db.Devices.AddRange(device1, device2, device3);
+        await _db.SaveChangesAsync();
+
+        // Device 1 succeeds
+        _mockDeviceService
+            .Setup(s => s.RemoveInactiveStaffFromDeviceAsync(device1.DeviceId))
+            .ReturnsAsync(new SyncResult
+            {
+                Success = true,
+                RecordsDeleted = 2,
+                Message = "Removed 2 inactive staff"
+            });
+
+        // Device 2 fails
+        _mockDeviceService
+            .Setup(s => s.RemoveInactiveStaffFromDeviceAsync(device2.DeviceId))
+            .ThrowsAsync(new Exception("Connection timeout"));
+
+        // Device 3 succeeds
+        _mockDeviceService
+            .Setup(s => s.RemoveInactiveStaffFromDeviceAsync(device3.DeviceId))
+            .ReturnsAsync(new SyncResult
+            {
+                Success = true,
+                RecordsDeleted = 1,
+                Message = "Removed 1 inactive staff"
+            });
+
+        // Act
+        await _deviceSyncJob.RemoveInactiveStaffFromAllDevicesAsync();
+
+        // Assert - All devices should be attempted despite failure
+        _mockDeviceService.Verify(s => s.RemoveInactiveStaffFromDeviceAsync(device1.DeviceId), Times.Once);
+        _mockDeviceService.Verify(s => s.RemoveInactiveStaffFromDeviceAsync(device2.DeviceId), Times.Once);
+        _mockDeviceService.Verify(s => s.RemoveInactiveStaffFromDeviceAsync(device3.DeviceId), Times.Once);
+    }
+
+    [Fact]
+    public async Task RemoveInactiveStaffFromAllDevices_HandlesFailureResult()
+    {
+        // Arrange
+        var device = new Device
+        {
+            DeviceId = Guid.NewGuid(),
+            DeviceName = "Device 1",
+            DeviceSerial = "ZK001",
+            IpAddress = "192.168.1.100",
+            Port = 4370,
+            Manufacturer = "ZKTeco",
+            LocationId = _testLocation.LocationId,
+            IsActive = true,
+            IsOnline = true,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        _db.Devices.Add(device);
+        await _db.SaveChangesAsync();
+
+        // Mock a failed result (Success = false)
+        _mockDeviceService
+            .Setup(s => s.RemoveInactiveStaffFromDeviceAsync(device.DeviceId))
+            .ReturnsAsync(new SyncResult
+            {
+                Success = false,
+                RecordsDeleted = 0,
+                Message = "Failed to connect to device",
+                Errors = ["Connection refused"]
+            });
+
+        // Act
+        await _deviceSyncJob.RemoveInactiveStaffFromAllDevicesAsync();
+
+        // Assert
+        _mockDeviceService.Verify(s => s.RemoveInactiveStaffFromDeviceAsync(device.DeviceId), Times.Once);
+        
+        // Verify logging occurred (check mock was called)
+        _mockLogger.Verify(
+            x => x.Log(
+                LogLevel.Information,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Removed 0 inactive staff")),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task RemoveInactiveStaffFromAllDevices_HandlesNoDevices()
+    {
+        // Arrange - No devices in database
+
+        // Act
+        await _deviceSyncJob.RemoveInactiveStaffFromAllDevicesAsync();
+
+        // Assert
+        _mockDeviceService.Verify(s => s.RemoveInactiveStaffFromDeviceAsync(It.IsAny<Guid>()), Times.Never);
+        
+        // Verify that the job started and completed logs were written
+        _mockLogger.Verify(
+            x => x.Log(
+                LogLevel.Information,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Starting inactive staff removal job")),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task RemoveInactiveStaffFromAllDevices_LogsCorrectTotals()
+    {
+        // Arrange
+        var device1 = new Device
+        {
+            DeviceId = Guid.NewGuid(),
+            DeviceName = "Device 1",
+            DeviceSerial = "ZK001",
+            IpAddress = "192.168.1.100",
+            Port = 4370,
+            Manufacturer = "ZKTeco",
+            LocationId = _testLocation.LocationId,
+            IsActive = true,
+            IsOnline = true,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        var device2 = new Device
+        {
+            DeviceId = Guid.NewGuid(),
+            DeviceName = "Device 2",
+            DeviceSerial = "ZK002",
+            IpAddress = "192.168.1.101",
+            Port = 4370,
+            Manufacturer = "ZKTeco",
+            LocationId = _testLocation.LocationId,
+            IsActive = true,
+            IsOnline = true,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        var device3 = new Device
+        {
+            DeviceId = Guid.NewGuid(),
+            DeviceName = "Device 3",
+            DeviceSerial = "ZK003",
+            IpAddress = "192.168.1.102",
+            Port = 4370,
+            Manufacturer = "ZKTeco",
+            LocationId = _testLocation.LocationId,
+            IsActive = true,
+            IsOnline = true,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        _db.Devices.AddRange(device1, device2, device3);
+        await _db.SaveChangesAsync();
+
+        // Setup results: 2 successful (3 + 5 removed), 1 failed
+        _mockDeviceService
+            .Setup(s => s.RemoveInactiveStaffFromDeviceAsync(device1.DeviceId))
+            .ReturnsAsync(new SyncResult { Success = true, RecordsDeleted = 3 });
+
+        _mockDeviceService
+            .Setup(s => s.RemoveInactiveStaffFromDeviceAsync(device2.DeviceId))
+            .ReturnsAsync(new SyncResult { Success = false, RecordsDeleted = 0 });
+
+        _mockDeviceService
+            .Setup(s => s.RemoveInactiveStaffFromDeviceAsync(device3.DeviceId))
+            .ReturnsAsync(new SyncResult { Success = true, RecordsDeleted = 5 });
+
+        // Act
+        await _deviceSyncJob.RemoveInactiveStaffFromAllDevicesAsync();
+
+        // Assert - Check final summary log
+        _mockLogger.Verify(
+            x => x.Log(
+                LogLevel.Information,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("8 staff removed") && v.ToString()!.Contains("1 devices failed")),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task RemoveInactiveStaffFromAllDevices_ProcessesOnlyActiveDevicesFromMultipleLocations()
+    {
+        // Arrange
+        var location2 = new Location
+        {
+            LocationId = Guid.NewGuid(),
+            LocationName = "Branch Office",
+            LocationCode = "BRANCH",
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        _db.Locations.Add(location2);
+
+        var deviceMainOffice = new Device
+        {
+            DeviceId = Guid.NewGuid(),
+            DeviceName = "Main Office Device",
+            DeviceSerial = "ZK001",
+            IpAddress = "192.168.1.100",
+            Port = 4370,
+            Manufacturer = "ZKTeco",
+            LocationId = _testLocation.LocationId,
+            IsActive = true,
+            IsOnline = true,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        var deviceBranchOffice = new Device
+        {
+            DeviceId = Guid.NewGuid(),
+            DeviceName = "Branch Office Device",
+            DeviceSerial = "ZK002",
+            IpAddress = "192.168.2.100",
+            Port = 4370,
+            Manufacturer = "ZKTeco",
+            LocationId = location2.LocationId,
+            IsActive = true,
+            IsOnline = true,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        _db.Devices.AddRange(deviceMainOffice, deviceBranchOffice);
+        await _db.SaveChangesAsync();
+
+        _mockDeviceService
+            .Setup(s => s.RemoveInactiveStaffFromDeviceAsync(It.IsAny<Guid>()))
+            .ReturnsAsync(new SyncResult
+            {
+                Success = true,
+                RecordsDeleted = 1,
+                Message = "Removed 1 inactive staff"
+            });
+
+        // Act
+        await _deviceSyncJob.RemoveInactiveStaffFromAllDevicesAsync();
+
+        // Assert - Both devices should be processed
+        _mockDeviceService.Verify(s => s.RemoveInactiveStaffFromDeviceAsync(deviceMainOffice.DeviceId), Times.Once);
+        _mockDeviceService.Verify(s => s.RemoveInactiveStaffFromDeviceAsync(deviceBranchOffice.DeviceId), Times.Once);
+    }
 }

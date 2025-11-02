@@ -373,7 +373,7 @@ public sealed class DeviceIntegrationTests : IClassFixture<DeviceTestWebApplicat
 
     // Helper methods
 
-    private async Task StartSimulatorAsync()
+    private Task StartSimulatorAsync()
     {
         try
         {
@@ -420,6 +420,7 @@ public sealed class DeviceIntegrationTests : IClassFixture<DeviceTestWebApplicat
             _simulatorProcess.BeginErrorReadLine();
             
             _output.WriteLine("ZK simulator started successfully");
+            return Task.CompletedTask;
         }
         catch (Exception ex)
         {

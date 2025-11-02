@@ -195,10 +195,10 @@ if (!app.Environment.IsEnvironment("Testing"))
         job => job.SyncAllStaffAsync(),
         "0 */6 * * *");  // Run every 6 hours
 
-    RecurringJob.AddOrUpdate<DeviceSyncJob>(
-        "remove-inactive-staff",
-        job => job.RemoveInactiveStaffFromAllDevicesAsync(),
-        Cron.Daily(2));  // Run daily at 2:00 AM
+    // RecurringJob.AddOrUpdate<DeviceSyncJob>(
+    //     "remove-inactive-staff",
+    //     job => job.RemoveInactiveStaffFromAllDevicesAsync(),
+    //     Cron.Daily(2));  // Run daily at 2:00 AM
 
     RecurringJob.AddOrUpdate<AttendanceProcessingJob>(
         "process-yesterday-attendance",
