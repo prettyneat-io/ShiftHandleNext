@@ -25,6 +25,10 @@ public class PunchClockDbContext : DbContext
     public DbSet<SyncLog> SyncLogs { get; set; }
     public DbSet<AuditLog> AuditLogs { get; set; }
     public DbSet<ExportLog> ExportLogs { get; set; }
+    public DbSet<LeaveType> LeaveTypes { get; set; }
+    public DbSet<LeaveRequest> LeaveRequests { get; set; }
+    public DbSet<LeaveBalance> LeaveBalances { get; set; }
+    public DbSet<Holiday> Holidays { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -434,6 +438,113 @@ public class PunchClockDbContext : DbContext
             entity.Property(e => e.ExportedAt).HasColumnName("exported_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
             entity.Property(e => e.ExportStatus).HasColumnName("export_status").HasMaxLength(20).IsRequired();
             entity.Property(e => e.ExportMetadata).HasColumnName("export_metadata").HasColumnType("jsonb");
+        });
+
+        // LeaveType
+        modelBuilder.Entity<LeaveType>(entity =>
+        {
+            entity.ToTable("leave_types");
+            entity.HasKey(e => e.LeaveTypeId);
+            entity.Property(e => e.LeaveTypeId).HasColumnName("leave_type_id").HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(e => e.TypeName).HasColumnName("type_name").HasMaxLength(100).IsRequired();
+            entity.Property(e => e.TypeCode).HasColumnName("type_code").HasMaxLength(20);
+            entity.Property(e => e.Description).HasColumnName("description");
+            entity.Property(e => e.RequiresApproval).HasColumnName("requires_approval").HasDefaultValue(true);
+            entity.Property(e => e.RequiresDocumentation).HasColumnName("requires_documentation").HasDefaultValue(false);
+            entity.Property(e => e.MaxDaysPerYear).HasColumnName("max_days_per_year");
+            entity.Property(e => e.MinDaysNotice).HasColumnName("min_days_notice");
+            entity.Property(e => e.IsPaid).HasColumnName("is_paid").HasDefaultValue(true);
+            entity.Property(e => e.AllowsHalfDay).HasColumnName("allows_half_day").HasDefaultValue(true);
+            entity.Property(e => e.AllowsHourly).HasColumnName("allows_hourly").HasDefaultValue(false);
+            entity.Property(e => e.Color).HasColumnName("color").HasMaxLength(7);
+            entity.Property(e => e.IsActive).HasColumnName("is_active").HasDefaultValue(true);
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.HasIndex(e => e.TypeCode).IsUnique();
+        });
+
+        // LeaveRequest
+        modelBuilder.Entity<LeaveRequest>(entity =>
+        {
+            entity.ToTable("leave_requests");
+            entity.HasKey(e => e.LeaveRequestId);
+            entity.Property(e => e.LeaveRequestId).HasColumnName("leave_request_id").HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(e => e.StaffId).HasColumnName("staff_id").IsRequired();
+            entity.Property(e => e.LeaveTypeId).HasColumnName("leave_type_id").IsRequired();
+            entity.Property(e => e.StartDate).HasColumnName("start_date").IsRequired();
+            entity.Property(e => e.EndDate).HasColumnName("end_date").IsRequired();
+            entity.Property(e => e.TotalDays).HasColumnName("total_days").HasPrecision(4, 2).IsRequired();
+            entity.Property(e => e.TotalHours).HasColumnName("total_hours");
+            entity.Property(e => e.Reason).HasColumnName("reason").IsRequired();
+            entity.Property(e => e.SupportingDocuments).HasColumnName("supporting_documents").HasColumnType("jsonb");
+            entity.Property(e => e.Status).HasColumnName("status").HasMaxLength(20).HasDefaultValue("PENDING");
+            entity.Property(e => e.RequestedBy).HasColumnName("requested_by").IsRequired();
+            entity.Property(e => e.RequestedAt).HasColumnName("requested_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.ReviewedBy).HasColumnName("reviewed_by");
+            entity.Property(e => e.ReviewedAt).HasColumnName("reviewed_at");
+            entity.Property(e => e.ReviewNotes).HasColumnName("review_notes");
+            entity.Property(e => e.CancelledAt).HasColumnName("cancelled_at");
+            entity.Property(e => e.CancelledBy).HasColumnName("cancelled_by");
+            entity.Property(e => e.CancellationReason).HasColumnName("cancellation_reason");
+            entity.Property(e => e.AffectsAttendance).HasColumnName("affects_attendance").HasDefaultValue(true);
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+            
+            entity.HasOne(e => e.Staff).WithMany(s => s.LeaveRequests).HasForeignKey(e => e.StaffId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.LeaveType).WithMany(lt => lt.LeaveRequests).HasForeignKey(e => e.LeaveTypeId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.RequestedByUser).WithMany(u => u.RequestedLeaveRequests).HasForeignKey(e => e.RequestedBy).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.ReviewedByUser).WithMany(u => u.ReviewedLeaveRequests).HasForeignKey(e => e.ReviewedBy).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.CancelledByUser).WithMany(u => u.CancelledLeaveRequests).HasForeignKey(e => e.CancelledBy).OnDelete(DeleteBehavior.Restrict);
+            
+            entity.HasIndex(e => new { e.StaffId, e.StartDate, e.EndDate });
+            entity.HasIndex(e => e.Status);
+        });
+
+        // LeaveBalance
+        modelBuilder.Entity<LeaveBalance>(entity =>
+        {
+            entity.ToTable("leave_balances");
+            entity.HasKey(e => e.LeaveBalanceId);
+            entity.Property(e => e.LeaveBalanceId).HasColumnName("leave_balance_id").HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(e => e.StaffId).HasColumnName("staff_id").IsRequired();
+            entity.Property(e => e.LeaveTypeId).HasColumnName("leave_type_id").IsRequired();
+            entity.Property(e => e.Year).HasColumnName("year").IsRequired();
+            entity.Property(e => e.TotalAllocation).HasColumnName("total_allocation").HasPrecision(5, 2).IsRequired();
+            entity.Property(e => e.CarryForward).HasColumnName("carry_forward").HasPrecision(5, 2).HasDefaultValue(0);
+            entity.Property(e => e.Used).HasColumnName("used").HasPrecision(5, 2).HasDefaultValue(0);
+            entity.Property(e => e.Pending).HasColumnName("pending").HasPrecision(5, 2).HasDefaultValue(0);
+            entity.Property(e => e.Available).HasColumnName("available").HasPrecision(5, 2).HasDefaultValue(0);
+            entity.Property(e => e.LastAccrualDate).HasColumnName("last_accrual_date");
+            entity.Property(e => e.Notes).HasColumnName("notes");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+            
+            entity.HasOne(e => e.Staff).WithMany(s => s.LeaveBalances).HasForeignKey(e => e.StaffId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.LeaveType).WithMany(lt => lt.LeaveBalances).HasForeignKey(e => e.LeaveTypeId).OnDelete(DeleteBehavior.Restrict);
+            
+            entity.HasIndex(e => new { e.StaffId, e.LeaveTypeId, e.Year }).IsUnique();
+        });
+
+        // Holiday
+        modelBuilder.Entity<Holiday>(entity =>
+        {
+            entity.ToTable("holidays");
+            entity.HasKey(e => e.HolidayId);
+            entity.Property(e => e.HolidayId).HasColumnName("holiday_id").HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(e => e.HolidayName).HasColumnName("holiday_name").HasMaxLength(200).IsRequired();
+            entity.Property(e => e.HolidayDate).HasColumnName("holiday_date").IsRequired();
+            entity.Property(e => e.LocationId).HasColumnName("location_id");
+            entity.Property(e => e.IsRecurring).HasColumnName("is_recurring").HasDefaultValue(false);
+            entity.Property(e => e.IsMandatory).HasColumnName("is_mandatory").HasDefaultValue(true);
+            entity.Property(e => e.IsPaid).HasColumnName("is_paid").HasDefaultValue(true);
+            entity.Property(e => e.Description).HasColumnName("description");
+            entity.Property(e => e.IsActive).HasColumnName("is_active").HasDefaultValue(true);
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+            
+            entity.HasOne(e => e.Location).WithMany(l => l.Holidays).HasForeignKey(e => e.LocationId).OnDelete(DeleteBehavior.SetNull);
+            
+            entity.HasIndex(e => new { e.HolidayDate, e.LocationId });
         });
     }
 }

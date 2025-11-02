@@ -22,6 +22,9 @@ public class User
     // Navigation properties
     public ICollection<UserRole> UserRoles { get; set; } = [];
     public ICollection<AuditLog> AuditLogs { get; set; } = [];
+    public ICollection<LeaveRequest> RequestedLeaveRequests { get; set; } = [];
+    public ICollection<LeaveRequest> ReviewedLeaveRequests { get; set; } = [];
+    public ICollection<LeaveRequest> CancelledLeaveRequests { get; set; } = [];
 }
 
 public class Role

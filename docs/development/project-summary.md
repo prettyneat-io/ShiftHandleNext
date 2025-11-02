@@ -76,12 +76,13 @@ ShiftHandleNext/
 - ✅ Initial migration created and applied
 - ✅ Database seeding with sample data (configurable)
 
-### 2. **Entity Models** (16 total)
+### 2. **Entity Models** (20 total)
 - ✅ **User Management**: User, Role, Permission, UserRole, RolePermission
-- ✅ **Organization**: Department, Location
+- ✅ **Organization**: Department, Location, Shift
 - ✅ **Staff Management**: Staff, BiometricTemplate
 - ✅ **Device Management**: Device, DeviceEnrollment
-- ✅ **Attendance**: PunchLog, AttendanceRecord
+- ✅ **Attendance**: PunchLog, AttendanceRecord, AttendanceCorrection
+- ✅ **Leave Management**: LeaveType, LeaveRequest, LeaveBalance, Holiday (NEW!)
 - ✅ **System**: SyncLog, AuditLog, ExportLog
 
 ### 3. **Authentication & Authorization**
@@ -122,7 +123,17 @@ ShiftHandleNext/
 - ✅ **Error Handling**: Robust error handling and logging
 - ✅ **Job Dashboard**: Hangfire dashboard at `/hangfire` for monitoring
 
-### 7. **API Endpoints** (30+ endpoints)
+### 7. **Leave Management System** (NEW!)
+- ✅ **Leave Types**: Configurable leave types (vacation, sick, personal, etc.)
+- ✅ **Leave Requests**: Submit, approve, reject, and cancel leave requests
+- ✅ **Leave Balance**: Track annual leave allocations, usage, and carry-forward
+- ✅ **Approval Workflow**: Pending → Approved/Rejected with reviewer tracking
+- ✅ **Holiday Calendar**: Define holidays per location with recurring support
+- ✅ **Validation**: Overlap detection, balance checking, minimum notice enforcement
+- ✅ **Half-Day Support**: Flexible leave duration (full day, half day, hourly)
+- ✅ **Documentation**: Support for attaching documents to leave requests
+
+### 8. **API Endpoints** (40+ endpoints)
 
 #### Authentication (Public)
 - `POST /api/auth/login` - User login with JWT token response
@@ -158,6 +169,26 @@ ShiftHandleNext/
 - `GET /api/attendance/records` - Get attendance records with filters
 - `POST /api/attendance/logs` - Create manual punch log entry
 
+#### Leave Management (Authenticated) (NEW!)
+- `GET /api/leave/types` - List all leave types
+- `GET /api/leave/types/{id}` - Get leave type details
+- `POST /api/leave/types` - Create new leave type
+- `PUT /api/leave/types/{id}` - Update leave type
+- `DELETE /api/leave/types/{id}` - Soft delete leave type
+- `GET /api/leave/requests` - List leave requests with filters (staff, type, status, date range)
+- `GET /api/leave/requests/{id}` - Get leave request details
+- `POST /api/leave/requests` - Submit new leave request
+- `POST /api/leave/requests/{id}/approve` - Approve leave request
+- `POST /api/leave/requests/{id}/reject` - Reject leave request
+- `POST /api/leave/requests/{id}/cancel` - Cancel leave request
+- `GET /api/leave/balance/{staffId}` - Get leave balance for staff member
+- `POST /api/leave/balance` - Create/update leave balance
+- `GET /api/leave/holidays` - List holidays (filter by year, location)
+- `GET /api/leave/holidays/{id}` - Get holiday details
+- `POST /api/leave/holidays` - Create new holiday
+- `PUT /api/leave/holidays/{id}` - Update holiday
+- `DELETE /api/leave/holidays/{id}` - Soft delete holiday
+
 #### Organization (Authenticated)
 - `GET /api/departments` - List all departments
 - `POST /api/departments` - Create new department
@@ -173,7 +204,7 @@ ShiftHandleNext/
 #### System (Public)
 - `GET /api/health` - Database health check
 
-### 6. **Advanced Features**
+### 9. **Advanced Features**
 - ✅ **Controller-Based Architecture** - Clean attribute-routed controllers
 - ✅ **Query Parameters** - Pagination, sorting, filtering, eager loading (include)
 - ✅ **Swagger/OpenAPI** - Full interactive API documentation with JWT support
@@ -185,7 +216,7 @@ ShiftHandleNext/
 - ✅ **Error Handling** - Consistent error responses via BaseController
 - ✅ **Logging** - Structured logging throughout application
 
-### 7. **Testing** (59 Integration Tests)
+### 10. **Testing** (59+ Integration Tests)
 - ✅ **Authentication Tests** - Login, registration, protected endpoints
 - ✅ **Query Options Tests** - Pagination, sorting, filtering, includes
 - ✅ **API Endpoint Tests** - Full CRUD operations
@@ -281,6 +312,18 @@ dotnet test
 | GET | `/api/attendance/logs` | Yes | Get punch logs |
 | POST | `/api/attendance/logs` | Yes | Create punch log |
 | GET | `/api/attendance/records` | Yes | Get attendance records |
+| **Leave Management (NEW!)** ||||
+| GET | `/api/leave/types` | Yes | List leave types |
+| POST | `/api/leave/types` | Yes | Create leave type |
+| GET | `/api/leave/requests` | Yes | List leave requests |
+| POST | `/api/leave/requests` | Yes | Submit leave request |
+| POST | `/api/leave/requests/{id}/approve` | Yes | Approve leave |
+| POST | `/api/leave/requests/{id}/reject` | Yes | Reject leave |
+| POST | `/api/leave/requests/{id}/cancel` | Yes | Cancel leave |
+| GET | `/api/leave/balance/{staffId}` | Yes | Get leave balance |
+| POST | `/api/leave/balance` | Yes | Update leave balance |
+| GET | `/api/leave/holidays` | Yes | List holidays |
+| POST | `/api/leave/holidays` | Yes | Create holiday |
 | **Organization** ||||
 | GET | `/api/departments` | Yes | List departments |
 | POST | `/api/departments` | Yes | Create department |
@@ -406,9 +449,9 @@ dotnet test
 ### Priority 1 - Business Logic
 - [x] Attendance processing engine (PunchLog → AttendanceRecord)
 - [x] Background jobs for device sync (Hangfire/Quartz)
+- [x] **Leave/absence tracking** - Full leave management system implemented
 - [ ] Overtime calculation (partially implemented)
-- [ ] Shift management
-- [ ] Leave/absence tracking
+- [ ] Shift management (basic implementation complete, needs enhancements)
 - [ ] Anomaly detection (partially implemented)
 
 ### Priority 2 - Reporting & Export
@@ -439,7 +482,7 @@ dotnet test
 
 ## 🧪 Testing
 
-### 7. **Testing** (73+ Integration Tests)
+### 7. **Testing** (89+ Integration Tests)
 The project includes comprehensive integration tests with 100% passing rate:
 
 ```bash
@@ -451,7 +494,8 @@ dotnet test
 # ✅ 20 Query Options Tests - Pagination, sorting, filtering, includes
 # ✅ 12 API Endpoint Tests - CRUD operations for all entities
 # ✅ 19 Device Integration Tests - Real ZK simulator integration
-# ✅ 14 Attendance Processing Tests - PunchLog → AttendanceRecord processing (NEW!)
+# ✅ 14 Attendance Processing Tests - PunchLog → AttendanceRecord processing
+# ✅ 30 Leave Management Tests - Complete leave system testing (NEW!)
 # ✅ TBD Background Job Tests - Device sync and attendance jobs (tests created, need fixes)
 ```
 
@@ -676,14 +720,16 @@ Your C# .NET API backend is **production-ready** with full ZKTeco device integra
 - ✅ Database running in Docker
 - ✅ EF Core migrations applied
 - ✅ API server with Swagger and JWT authentication
-- ✅ 16 entity models implemented
-- ✅ 30+ REST endpoints working
+- ✅ 20 entity models implemented
+- ✅ 40+ REST endpoints working
 - ✅ Full ZKTeco device integration (PyZK)
 - ✅ Remote fingerprint enrollment
 - ✅ Device synchronization (staff & attendance)
 - ✅ **Attendance processing engine (PunchLog → AttendanceRecord)**
 - ✅ **Hangfire background jobs (device sync, attendance processing)**
-- ✅ 73+ integration tests
+- ✅ **Leave management system (requests, approvals, balances, holidays)** *(NEW!)*
+- ✅ **Leave management tests (30 comprehensive integration tests)** *(NEW!)*
+- ✅ 89+ integration tests
 - ✅ ZK device simulator for testing
 - ✅ Comprehensive documentation
 

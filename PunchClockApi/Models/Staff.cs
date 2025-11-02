@@ -33,6 +33,8 @@ public class Staff
     public ICollection<DeviceEnrollment> DeviceEnrollments { get; set; } = [];
     public ICollection<PunchLog> PunchLogs { get; set; } = [];
     public ICollection<AttendanceRecord> AttendanceRecords { get; set; } = [];
+    public ICollection<LeaveRequest> LeaveRequests { get; set; } = [];
+    public ICollection<LeaveBalance> LeaveBalances { get; set; } = [];
 }
 
 public class BiometricTemplate

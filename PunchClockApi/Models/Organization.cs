@@ -36,6 +36,7 @@ public class Location
     // Navigation properties
     public ICollection<Device> Devices { get; set; } = [];
     public ICollection<Staff> StaffMembers { get; set; } = [];
+    public ICollection<Holiday> Holidays { get; set; } = [];
 }
 
 public class Shift
