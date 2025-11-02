@@ -14,6 +14,8 @@ from datetime import datetime
 import codecs
 import time
 import threading
+import sqlite3
+import os
 
 # Constants from ZKTeco protocol
 USHRT_MAX = 65535
@@ -77,13 +79,14 @@ FCT_FINGERTMP = 2
 class ZKSimulator:
     """Simulates a ZKTeco attendance device"""
     
-    def __init__(self, ip='0.0.0.0', port=4370, password=0, use_tcp=True):
+    def __init__(self, ip='0.0.0.0', port=4370, password=0, use_tcp=True, db_path='zk_simulator.db'):
         self.ip = ip
         self.port = port
         self.password = password
         self.use_tcp = use_tcp
         self.session_id = 0
         self.is_authenticated = False
+        self.db_path = db_path
         
         # Simulated device data
         self.firmware_version = "Ver 6.60 Nov 13 2019"
@@ -91,20 +94,6 @@ class ZKSimulator:
         self.platform = "ZEM560"
         self.device_name = "ZKTeco Device"
         self.mac_address = "00:17:61:C8:EC:17"
-        
-        # User data - simulate some basic users
-        self.users = [
-            # uid, privilege, password, name, card, group_id, user_id
-            (1, 14, b'', b'Admin', 0, 0, '1'),  # 14 = admin privilege
-            (2, 0, b'12345', b'User001', 123456, 0, '2'),
-            (3, 0, b'', b'User002', 234567, 0, '3'),
-        ]
-        
-        # Fingerprint templates - (uid, fid, valid, template_data)
-        self.templates = []
-        
-        # Attendance records - (user_id, timestamp_encoded, status, punch, uid)
-        self.attendance_records = []
         
         # Event registration
         self.registered_events = 0
@@ -117,12 +106,244 @@ class ZKSimulator:
         self.data_buffer = b''
         
         # Device capacity
-        self.users_count = len(self.users)
         self.users_capacity = 3000
-        self.fingers_count = 5
         self.fingers_capacity = 10000
-        self.records_count = 150
         self.records_capacity = 100000
+        
+        # Initialize database
+        self._init_database()
+        
+        # Load counts from database
+        self.users_count = self._get_users_count()
+        self.fingers_count = self._get_templates_count()
+        self.records_count = self._get_attendance_count()
+    
+    def _init_database(self):
+        """Initialize SQLite database with required tables"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        # Create users table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS users (
+                uid INTEGER PRIMARY KEY,
+                privilege INTEGER NOT NULL,
+                password BLOB,
+                name BLOB NOT NULL,
+                card INTEGER DEFAULT 0,
+                group_id TEXT DEFAULT '0',
+                user_id TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
+        # Create templates table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS templates (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                uid INTEGER NOT NULL,
+                fid INTEGER NOT NULL,
+                valid INTEGER DEFAULT 1,
+                template_data BLOB NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(uid, fid)
+            )
+        ''')
+        
+        # Create attendance_records table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS attendance_records (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                uid INTEGER NOT NULL,
+                user_id TEXT NOT NULL,
+                timestamp_encoded BLOB NOT NULL,
+                status INTEGER NOT NULL,
+                punch INTEGER NOT NULL,
+                recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
+        # Create indexes for performance
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_users_user_id ON users(user_id)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_templates_uid ON templates(uid)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_attendance_uid ON attendance_records(uid)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_attendance_recorded_at ON attendance_records(recorded_at)')
+        
+        conn.commit()
+        
+        # Seed with default data if empty
+        cursor.execute('SELECT COUNT(*) FROM users')
+        if cursor.fetchone()[0] == 0:
+            print("Seeding database with default users...")
+            default_users = [
+                (1, 14, b'', b'Admin', 0, '0', '1'),
+                (2, 0, b'12345', b'User001', 123456, '0', '2'),
+                (3, 0, b'', b'User002', 234567, '0', '3'),
+            ]
+            cursor.executemany('''
+                INSERT INTO users (uid, privilege, password, name, card, group_id, user_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', default_users)
+            conn.commit()
+            print(f"Seeded {len(default_users)} default users")
+        
+        conn.close()
+    
+    def _get_users_count(self):
+        """Get total number of users from database"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        cursor.execute('SELECT COUNT(*) FROM users')
+        count = cursor.fetchone()[0]
+        conn.close()
+        return count
+    
+    def _get_templates_count(self):
+        """Get total number of fingerprint templates from database"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        cursor.execute('SELECT COUNT(*) FROM templates')
+        count = cursor.fetchone()[0]
+        conn.close()
+        return count
+    
+    def _get_attendance_count(self):
+        """Get total number of attendance records from database"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        cursor.execute('SELECT COUNT(*) FROM attendance_records')
+        count = cursor.fetchone()[0]
+        conn.close()
+        return count
+    
+    def _get_all_users(self):
+        """Get all users from database"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        cursor.execute('SELECT uid, privilege, password, name, card, group_id, user_id FROM users')
+        users = cursor.fetchall()
+        conn.close()
+        return users
+    
+    def _get_user_by_uid(self, uid):
+        """Get user by UID"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        cursor.execute('SELECT uid, privilege, password, name, card, group_id, user_id FROM users WHERE uid = ?', (uid,))
+        user = cursor.fetchone()
+        conn.close()
+        return user
+    
+    def _get_user_by_user_id(self, user_id):
+        """Get user by user_id string"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        cursor.execute('SELECT uid, privilege, password, name, card, group_id, user_id FROM users WHERE user_id = ?', (user_id,))
+        user = cursor.fetchone()
+        conn.close()
+        return user
+    
+    def _insert_or_update_user(self, uid, privilege, password, name, card, group_id, user_id):
+        """Insert or update a user in database"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT INTO users (uid, privilege, password, name, card, group_id, user_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(uid) DO UPDATE SET
+                privilege = excluded.privilege,
+                password = excluded.password,
+                name = excluded.name,
+                card = excluded.card,
+                group_id = excluded.group_id,
+                user_id = excluded.user_id
+        ''', (uid, privilege, password, name, card, group_id, user_id))
+        conn.commit()
+        conn.close()
+        self.users_count = self._get_users_count()
+    
+    def _delete_user(self, uid):
+        """Delete user and their templates from database"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        cursor.execute('DELETE FROM users WHERE uid = ?', (uid,))
+        cursor.execute('DELETE FROM templates WHERE uid = ?', (uid,))
+        conn.commit()
+        conn.close()
+        self.users_count = self._get_users_count()
+        self.fingers_count = self._get_templates_count()
+    
+    def _get_all_templates(self):
+        """Get all fingerprint templates from database"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        cursor.execute('SELECT uid, fid, valid, template_data FROM templates')
+        templates = cursor.fetchall()
+        conn.close()
+        return templates
+    
+    def _get_template(self, uid, fid):
+        """Get specific fingerprint template"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        cursor.execute('SELECT uid, fid, valid, template_data FROM templates WHERE uid = ? AND fid = ?', (uid, fid))
+        template = cursor.fetchone()
+        conn.close()
+        return template
+    
+    def _insert_or_update_template(self, uid, fid, valid, template_data):
+        """Insert or update a fingerprint template"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT INTO templates (uid, fid, valid, template_data)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(uid, fid) DO UPDATE SET
+                valid = excluded.valid,
+                template_data = excluded.template_data
+        ''', (uid, fid, valid, template_data))
+        conn.commit()
+        conn.close()
+        self.fingers_count = self._get_templates_count()
+    
+    def _delete_template(self, uid, fid):
+        """Delete a specific fingerprint template"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        cursor.execute('DELETE FROM templates WHERE uid = ? AND fid = ?', (uid, fid))
+        conn.commit()
+        conn.close()
+        self.fingers_count = self._get_templates_count()
+    
+    def _delete_user_templates(self, uid):
+        """Delete all templates for a user"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        cursor.execute('DELETE FROM templates WHERE uid = ?', (uid,))
+        conn.commit()
+        conn.close()
+        self.fingers_count = self._get_templates_count()
+    
+    def _get_all_attendance(self):
+        """Get all attendance records from database"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        cursor.execute('SELECT user_id, timestamp_encoded, status, punch, uid FROM attendance_records ORDER BY id')
+        records = cursor.fetchall()
+        conn.close()
+        return records
+    
+    def _insert_attendance_record(self, uid, user_id, timestamp_encoded, status, punch):
+        """Insert an attendance record"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT INTO attendance_records (uid, user_id, timestamp_encoded, status, punch)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (uid, user_id, timestamp_encoded, status, punch))
+        conn.commit()
+        conn.close()
+        self.records_count = self._get_attendance_count()
         
     def create_checksum(self, packet):
         """Calculate checksum for packet"""
@@ -336,9 +557,12 @@ class ZKSimulator:
         """Handle user template read request - return users"""
         print("  -> Handling CMD_USERTEMP_RRQ (get users)")
         
+        # Get users from database
+        users = self._get_all_users()
+        
         # Pack user data (using 72-byte format for modern devices)
         user_data = b''
-        for uid, privilege, password, name, card, group_id, user_id in self.users:
+        for uid, privilege, password, name, card, group_id, user_id in users:
             # Format: <HB8s24sIx7sx24s (72 bytes)
             password_bytes = str(password).encode()[:8].ljust(8, b'\x00') if isinstance(password, (int, str)) else password.ljust(8, b'\x00')[:8]
             name_bytes = name if isinstance(name, bytes) else name.encode()
@@ -384,10 +608,11 @@ class ZKSimulator:
             # Check what type of data is requested
             
             if fct == FCT_USER:
-                # Return user data
+                # Return user data from database
                 print("     Returning user data")
+                users = self._get_all_users()
                 user_data = b''
-                for uid, privilege, password, name, card, group_id, user_id in self.users:
+                for uid, privilege, password, name, card, group_id, user_id in users:
                     # Format: <HB8s24sIx7sx24s (72 bytes)
                     password_bytes = str(password).encode()[:8].ljust(8, b'\x00') if isinstance(password, (int, str)) else password.ljust(8, b'\x00')[:8]
                     name_bytes = name if isinstance(name, bytes) else name.encode()
@@ -411,10 +636,11 @@ class ZKSimulator:
                 full_data = struct.pack('I', total_size) + user_data
                 response = self.create_header(CMD_DATA, session_id, reply_id, full_data)
             elif fct == FCT_FINGERTMP:
-                # Return fingerprint templates
+                # Return fingerprint templates from database
                 print("     Returning fingerprint templates")
+                templates = self._get_all_templates()
                 template_data = b''
-                for uid, fid, valid, tmpl in self.templates:
+                for uid, fid, valid, tmpl in templates:
                     size = len(tmpl) + 6
                     template_data += struct.pack('<HHbb', size, uid, fid, valid) + tmpl
                 
@@ -422,10 +648,11 @@ class ZKSimulator:
                 full_data = struct.pack('I', total_size) + template_data
                 response = self.create_header(CMD_DATA, session_id, reply_id, full_data)
             elif fct == FCT_ATTLOG:
-                # Return attendance records
+                # Return attendance records from database
                 print("     Returning attendance records")
+                attendance_records = self._get_all_attendance()
                 att_data = b''
-                for user_id, timestamp, status, punch, uid in self.attendance_records:
+                for user_id, timestamp, status, punch, uid in attendance_records:
                     # 40-byte format
                     user_id_bytes = str(user_id).encode()[:24].ljust(24, b'\x00')
                     att_data += struct.pack('<H24sB4sB8s', uid, user_id_bytes, status, timestamp, punch, b'\x00' * 8)
@@ -523,21 +750,8 @@ class ZKSimulator:
             group_id_str = group_id.rstrip(b'\x00').decode('utf-8', errors='ignore')
             print(f"     User: uid={uid}, name={name}, privilege={privilege}, user_id={user_id_str}")
             
-            # Update or add user
-            user_found = False
-            new_users = []
-            for u in self.users:
-                if u[0] == uid:
-                    new_users.append((uid, privilege, password, name, card, group_id_str or '0', user_id_str or str(uid)))
-                    user_found = True
-                else:
-                    new_users.append(u)
-            
-            if not user_found:
-                new_users.append((uid, privilege, password, name, card, group_id_str or '0', user_id_str or str(uid)))
-            
-            self.users = new_users
-            self.users_count = len(self.users)
+            # Insert or update user in database
+            self._insert_or_update_user(uid, privilege, password, name, card, group_id_str or '0', user_id_str or str(uid))
         elif len(data) >= 28:
             # ZK6 format (28 bytes) - fallback for older devices
             uid, privilege, password, name, card, group_id, tz, user_id = struct.unpack('<HB5s8sIxBHI', data[:28])
@@ -547,21 +761,8 @@ class ZKSimulator:
             group_id_str = str(group_id)
             print(f"     User (ZK6): uid={uid}, name={name}, privilege={privilege}, user_id={user_id_str}")
             
-            # Update or add user
-            user_found = False
-            new_users = []
-            for u in self.users:
-                if u[0] == uid:  # uid match
-                    new_users.append((uid, privilege, password, name, card, group_id_str, user_id_str))
-                    user_found = True
-                else:
-                    new_users.append(u)
-            
-            if not user_found:
-                new_users.append((uid, privilege, password, name, card, group_id_str, user_id_str))
-            
-            self.users = new_users
-            self.users_count = len(self.users)
+            # Insert or update user in database
+            self._insert_or_update_user(uid, privilege, password, name, card, group_id_str, user_id_str)
         
         response = self.create_header(CMD_ACK_OK, session_id, reply_id)
         return response
@@ -572,12 +773,8 @@ class ZKSimulator:
             uid = struct.unpack('<H', data[:2])[0]
             print(f"  -> Handling CMD_DELETE_USER: uid={uid}")
             
-            # Remove user
-            self.users = [u for u in self.users if u[0] != uid]
-            # Remove user's templates
-            self.templates = [t for t in self.templates if t[0] != uid]
-            self.users_count = len(self.users)
-            self.fingers_count = len(self.templates)
+            # Delete user and their templates from database
+            self._delete_user(uid)
         else:
             print("  -> Handling CMD_DELETE_USER")
         
@@ -590,9 +787,8 @@ class ZKSimulator:
             uid, temp_id = struct.unpack('<Hb', data[:3])
             print(f"  -> Handling CMD_DELETE_USERTEMP: uid={uid}, fid={temp_id}")
             
-            # Remove specific template
-            self.templates = [t for t in self.templates if not (t[0] == uid and t[1] == temp_id)]
-            self.fingers_count = len(self.templates)
+            # Delete template from database
+            self._delete_template(uid, temp_id)
         else:
             print("  -> Handling CMD_DELETE_USERTEMP")
         
@@ -605,13 +801,13 @@ class ZKSimulator:
             uid, temp_id = struct.unpack('<Hb', data[:3])
             print(f"  -> Handling _CMD_GET_USERTEMP: uid={uid}, fid={temp_id}")
             
-            # Find template
-            for t in self.templates:
-                if t[0] == uid and t[1] == temp_id:
-                    # Return template data
-                    template_data = t[3] if len(t) > 3 else b'\x00' * 512
-                    response = self.create_header(CMD_DATA, session_id, reply_id, template_data + b'\x00\x00\x00\x00\x00\x00')
-                    return response
+            # Find template in database
+            template = self._get_template(uid, temp_id)
+            if template:
+                # Return template data
+                template_data = template[3] if len(template) > 3 else b'\x00' * 512
+                response = self.create_header(CMD_DATA, session_id, reply_id, template_data + b'\x00\x00\x00\x00\x00\x00')
+                return response
             
             # Template not found - return empty
             print("     Template not found")
@@ -626,9 +822,10 @@ class ZKSimulator:
         """Handle database read request (for templates)"""
         print("  -> Handling CMD_DB_RRQ")
         
-        # Return template data
+        # Return template data from database
+        templates = self._get_all_templates()
         template_data = b''
-        for uid, fid, valid, tmpl in self.templates:
+        for uid, fid, valid, tmpl in templates:
             size = len(tmpl) + 6
             template_data += struct.pack('<HHbb', size, uid, fid, valid) + tmpl
         
@@ -642,10 +839,11 @@ class ZKSimulator:
         """Handle attendance log read request"""
         print("  -> Handling CMD_ATTLOG_RRQ")
         
-        # Return attendance records
+        # Return attendance records from database
         # Format: 40 bytes per record for modern devices
+        attendance_records = self._get_all_attendance()
         att_data = b''
-        for user_id, timestamp, status, punch, uid in self.attendance_records:
+        for user_id, timestamp, status, punch, uid in attendance_records:
             # 40-byte format: uid(2) + user_id(24) + status(1) + timestamp(4) + punch(1) + space(8)
             user_id_bytes = str(user_id).encode()[:24].ljust(24, b'\x00')
             att_data += struct.pack('<H24sB4sB8s', uid, user_id_bytes, status, timestamp, punch, b'\x00' * 8)
@@ -666,14 +864,11 @@ class ZKSimulator:
             user_id = user_id.rstrip(b'\x00').decode(errors='ignore')
             print(f"     Enrolling: user_id={user_id}, temp_id={temp_id}, flag={flag}")
             
-            # Find uid from user_id
-            uid = None
-            for u in self.users:
-                u_user_id = str(u[6]) if isinstance(u[6], int) else u[6].decode(errors='ignore') if isinstance(u[6], bytes) else str(u[6])
-                if u_user_id == user_id:
-                    uid = u[0]
-                    break
-            if uid is None:
+            # Find uid from user_id in database
+            user = self._get_user_by_user_id(user_id)
+            if user:
+                uid = user[0]
+            else:
                 try:
                     uid = int(user_id)
                 except:
@@ -759,12 +954,8 @@ class ZKSimulator:
             ack = conn.recv(1024)
             print(f"  -> Received ACK for success event")
             
-            # Store the fingerprint template
-            # Remove old template if exists
-            self.templates = [t for t in self.templates if not (t[0] == self.enrollment_uid and t[1] == self.enrollment_fid)]
-            # Add new template
-            self.templates.append((self.enrollment_uid, self.enrollment_fid, 1, template_data))
-            self.fingers_count = len(self.templates)
+            # Store the fingerprint template in database
+            self._insert_or_update_template(self.enrollment_uid, self.enrollment_fid, 1, template_data)
             
             print(f"  -> Enrollment complete! Template stored for uid={self.enrollment_uid}, fid={self.enrollment_fid}")
             
@@ -836,24 +1027,16 @@ class ZKSimulator:
                         uid, privilege, password, name, card, group_id, user_id = struct.unpack('<HB8s24sIx7sx24s', user_data[:72])
                         password = password.rstrip(b'\x00')
                         name = name.rstrip(b'\x00')
-                        user_id = user_id.rstrip(b'\x00')
-                        group_id = group_id.rstrip(b'\x00')
-                        print(f"     User: uid={uid}, name={name}, user_id={user_id}")
+                        user_id_decoded = user_id.rstrip(b'\x00').decode('utf-8', errors='ignore')
+                        group_id_decoded = group_id.rstrip(b'\x00').decode('utf-8', errors='ignore')
+                        print(f"     User: uid={uid}, name={name}, user_id={user_id_decoded}")
                         
-                        # Update or add user
-                        user_found = False
-                        new_users = []
-                        for u in self.users:
-                            if u[0] == uid:
-                                new_users.append((uid, privilege, password, name, card, 0, int(user_id) if user_id.isdigit() else uid))
-                                user_found = True
-                            else:
-                                new_users.append(u)
-                        
-                        if not user_found:
-                            new_users.append((uid, privilege, password, name, card, 0, int(user_id) if user_id.isdigit() else uid))
-                        
-                        self.users = new_users
+                        # Insert or update user in database
+                        self._insert_or_update_user(
+                            uid, privilege, password, name, card, 
+                            group_id_decoded or '0', 
+                            user_id_decoded if user_id_decoded else str(uid)
+                        )
                         user_data = user_data[72:]
                     else:  # packet_size == 28
                         uid, privilege, password, name, card, group_id, tz, user_id = struct.unpack('<HB5s8sIxBHI', user_data[:28])
@@ -861,23 +1044,9 @@ class ZKSimulator:
                         name = name.rstrip(b'\x00')
                         print(f"     User: uid={uid}, name={name}, user_id={user_id}")
                         
-                        # Update or add user
-                        user_found = False
-                        new_users = []
-                        for u in self.users:
-                            if u[0] == uid:
-                                new_users.append((uid, privilege, password, name, card, group_id, user_id))
-                                user_found = True
-                            else:
-                                new_users.append(u)
-                        
-                        if not user_found:
-                            new_users.append((uid, privilege, password, name, card, group_id, user_id))
-                        
-                        self.users = new_users
+                        # Insert or update user in database
+                        self._insert_or_update_user(uid, privilege, password, name, card, str(group_id), str(user_id))
                         user_data = user_data[28:]
-                
-                self.users_count = len(self.users)
             
             # Parse template table
             templates_to_add = []
@@ -908,14 +1077,9 @@ class ZKSimulator:
                         print(f"     Template: uid={uid}, fid={fid}, size={len(template_data)}")
                         templates_to_add.append((uid, fid, 1, template_data))
             
-            # Add templates
+            # Add templates to database
             for tmpl in templates_to_add:
-                # Remove old template if exists
-                self.templates = [t for t in self.templates if not (t[0] == tmpl[0] and t[1] == tmpl[1])]
-                # Add new template
-                self.templates.append(tmpl)
-            
-            self.fingers_count = len(self.templates)
+                self._insert_or_update_template(tmpl[0], tmpl[1], tmpl[2], tmpl[3])
         
         # Clear buffer
         self.data_buffer = b''
@@ -1064,8 +1228,11 @@ class ZKSimulator:
         try:
             sock.bind((self.ip, self.port))
             print(f"ZKTeco Simulator running on {self.ip}:{self.port} ({protocol_name})")
+            print(f"Database: {self.db_path}")
             print(f"Password: {self.password}")
-            print(f"Simulated users: {len(self.users)}")
+            print(f"Simulated users: {self.users_count}")
+            print(f"Fingerprint templates: {self.fingers_count}")
+            print(f"Attendance records: {self.records_count}")
             print("\nWaiting for connections...\n")
             
             if self.use_tcp:
@@ -1138,6 +1305,7 @@ def main():
     parser.add_argument('--port', type=int, default=4370, help='Port to bind (default: 4370)')
     parser.add_argument('--password', type=int, default=0, help='Device password (default: 0 - no password)')
     parser.add_argument('--udp', action='store_true', help='Use UDP instead of TCP')
+    parser.add_argument('--db', default='zk_simulator.db', help='SQLite database path (default: zk_simulator.db)')
     
     args = parser.parse_args()
     
@@ -1145,7 +1313,8 @@ def main():
         ip=args.ip,
         port=args.port,
         password=args.password,
-        use_tcp=not args.udp
+        use_tcp=not args.udp,
+        db_path=args.db
     )
     
     simulator.run()
