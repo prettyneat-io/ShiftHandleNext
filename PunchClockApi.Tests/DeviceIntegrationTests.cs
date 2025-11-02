@@ -22,8 +22,9 @@ public sealed class DeviceIntegrationTests : IClassFixture<DeviceTestWebApplicat
     private readonly HttpClient _client;
     private readonly ITestOutputHelper _output;
     private Process? _simulatorProcess;
-    private const int SimulatorPort = 4370;
+    private int _simulatorPort;
     private const string SimulatorIp = "127.0.0.1";
+    private string _simulatorDbPath = string.Empty;
     
     // Track created test data for cleanup
     private Guid _testDeviceId;
@@ -64,6 +65,9 @@ public sealed class DeviceIntegrationTests : IClassFixture<DeviceTestWebApplicat
     {
         // Authenticate for all tests
         await AuthenticateAsAdminAsync();
+        
+        // Get a free port for this test run
+        _simulatorPort = GetFreePort();
         
         // Start the ZK simulator
         await StartSimulatorAsync();
@@ -163,9 +167,13 @@ public sealed class DeviceIntegrationTests : IClassFixture<DeviceTestWebApplicat
         var result = await response.Content.ReadFromJsonAsync<UsersResponse>();
         result.Should().NotBeNull();
         result!.Success.Should().BeTrue();
-        result.Count.Should().BeGreaterThanOrEqualTo(3); // Simulator has 3 default users
+        result.Count.Should().BeGreaterThanOrEqualTo(3); // Simulator starts with 3 default users
         result.Users.Should().NotBeEmpty();
-        result.Users.Should().Contain(u => u.Name == "Admin");
+        
+        // Verify the default users from simulator seeding are present
+        result.Users.Should().Contain(u => u.Name == "Admin" || u.UserId == "1");
+        result.Users.Should().Contain(u => u.Name == "User001" || u.UserId == "2");
+        result.Users.Should().Contain(u => u.Name == "User002" || u.UserId == "3");
     }
 
     [Fact]
@@ -373,6 +381,15 @@ public sealed class DeviceIntegrationTests : IClassFixture<DeviceTestWebApplicat
 
     // Helper methods
 
+    private static int GetFreePort()
+    {
+        using var socket = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, 0);
+        socket.Start();
+        var port = ((System.Net.IPEndPoint)socket.LocalEndpoint).Port;
+        socket.Stop();
+        return port;
+    }
+
     private Task StartSimulatorAsync()
     {
         try
@@ -388,14 +405,17 @@ public sealed class DeviceIntegrationTests : IClassFixture<DeviceTestWebApplicat
                 throw new FileNotFoundException($"ZK simulator not found at: {devicePath}");
             }
 
-            _output.WriteLine($"Starting ZK simulator at {SimulatorIp}:{SimulatorPort}");
+            // Use a unique database file for this test run
+            _simulatorDbPath = Path.Combine(Path.GetTempPath(), $"zk_test_{Guid.NewGuid():N}.db");
+            _output.WriteLine($"Starting ZK simulator at {SimulatorIp}:{_simulatorPort}");
+            _output.WriteLine($"Using database: {_simulatorDbPath}");
             
             _simulatorProcess = new Process
             {
                 StartInfo = new ProcessStartInfo
                 {
                     FileName = "python3",
-                    Arguments = $"{devicePath} --ip {SimulatorIp} --port {SimulatorPort}",
+                    Arguments = $"{devicePath} --ip {SimulatorIp} --port {_simulatorPort} --db {_simulatorDbPath}",
                     UseShellExecute = false,
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
@@ -439,8 +459,22 @@ public sealed class DeviceIntegrationTests : IClassFixture<DeviceTestWebApplicat
             _simulatorProcess.Dispose();
             _output.WriteLine("ZK simulator stopped");
             
-            // Give the OS time to release the port
-            await Task.Delay(500);
+            // Give the OS more time to release the port (important when running many tests)
+            await Task.Delay(2000);
+        }
+        
+        // Clean up the database file
+        if (!string.IsNullOrEmpty(_simulatorDbPath) && File.Exists(_simulatorDbPath))
+        {
+            try
+            {
+                File.Delete(_simulatorDbPath);
+                _output.WriteLine($"Cleaned up simulator database: {_simulatorDbPath}");
+            }
+            catch (Exception ex)
+            {
+                _output.WriteLine($"Failed to delete simulator database: {ex.Message}");
+            }
         }
     }
 
@@ -483,7 +517,7 @@ public sealed class DeviceIntegrationTests : IClassFixture<DeviceTestWebApplicat
             deviceModel = "ZKTeco F18 Simulator",
             manufacturer = "ZKTeco",
             ipAddress = SimulatorIp,
-            port = SimulatorPort,
+            port = _simulatorPort,
             locationId = _testLocationId,
             isActive = true,
             isOnline = false

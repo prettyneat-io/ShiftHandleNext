@@ -76,13 +76,13 @@ ShiftHandleNext/
 - ✅ Initial migration created and applied
 - ✅ Database seeding with sample data (configurable)
 
-### 2. **Entity Models** (20 total)
+### 2. **Entity Models** (21 total)
 - ✅ **User Management**: User, Role, Permission, UserRole, RolePermission
 - ✅ **Organization**: Department, Location, Shift
 - ✅ **Staff Management**: Staff, BiometricTemplate
 - ✅ **Device Management**: Device, DeviceEnrollment
-- ✅ **Attendance**: PunchLog, AttendanceRecord, AttendanceCorrection
-- ✅ **Leave Management**: LeaveType, LeaveRequest, LeaveBalance, Holiday (NEW!)
+- ✅ **Attendance**: PunchLog, AttendanceRecord, AttendanceCorrection, OvertimePolicy (NEW!)
+- ✅ **Leave Management**: LeaveType, LeaveRequest, LeaveBalance, Holiday
 - ✅ **System**: SyncLog, AuditLog, ExportLog
 
 ### 3. **Authentication & Authorization**
@@ -133,7 +133,7 @@ ShiftHandleNext/
 - ✅ **Half-Day Support**: Flexible leave duration (full day, half day, hourly)
 - ✅ **Documentation**: Support for attaching documents to leave requests
 
-### 8. **API Endpoints** (40+ endpoints)
+### 8. **API Endpoints** (50+ endpoints)
 
 #### Authentication (Public)
 - `POST /api/auth/login` - User login with JWT token response
@@ -169,7 +169,25 @@ ShiftHandleNext/
 - `GET /api/attendance/records` - Get attendance records with filters
 - `POST /api/attendance/logs` - Create manual punch log entry
 
-#### Leave Management (Authenticated) (NEW!)
+#### Shift Management (Authenticated) (NEW!)
+- `GET /api/shifts` - List all shifts with pagination and filters
+- `GET /api/shifts/{id}` - Get shift details with assigned staff
+- `POST /api/shifts` - Create new shift
+- `PUT /api/shifts/{id}` - Update shift
+- `DELETE /api/shifts/{id}` - Soft delete shift
+- `POST /api/shifts/assign-staff` - Assign multiple staff to a shift
+- `DELETE /api/shifts/unassign-staff/{staffId}` - Unassign staff from shift
+
+#### Overtime Policies (Authenticated) (NEW!)
+- `GET /api/overtime-policies` - List all overtime policies
+- `GET /api/overtime-policies/{id}` - Get policy details with assignments
+- `GET /api/overtime-policies/default` - Get current default policy
+- `POST /api/overtime-policies` - Create new overtime policy
+- `PUT /api/overtime-policies/{id}` - Update overtime policy
+- `DELETE /api/overtime-policies/{id}` - Soft delete overtime policy
+- `POST /api/overtime-policies/{id}/set-default` - Set policy as default
+
+#### Leave Management (Authenticated)
 - `GET /api/leave/types` - List all leave types
 - `GET /api/leave/types/{id}` - Get leave type details
 - `POST /api/leave/types` - Create new leave type
@@ -450,9 +468,9 @@ dotnet test
 - [x] Attendance processing engine (PunchLog → AttendanceRecord)
 - [x] Background jobs for device sync (Hangfire/Quartz)
 - [x] **Leave/absence tracking** - Full leave management system implemented
-- [ ] Overtime calculation (partially implemented)
-- [ ] Shift management (basic implementation complete, needs enhancements)
-- [ ] Anomaly detection (partially implemented)
+- [x] **Overtime calculation enhancements** - Configurable OvertimePolicy with daily/weekly/weekend/holiday multipliers
+- [x] **Shift management enhancements** - Full CRUD, staff assignment, break handling, grace periods
+- [x] **Anomaly detection** - Implemented in AttendanceProcessingService (missing punches, short shifts, odd counts, late/early)
 
 ### Priority 2 - Reporting & Export
 - [ ] Daily attendance reports

@@ -7,6 +7,7 @@ public class Department
     public string? DepartmentCode { get; set; }
     public Guid? ParentDepartmentId { get; set; }
     public Guid? ManagerStaffId { get; set; }
+    public Guid? OvertimePolicyId { get; set; }
     public bool IsActive { get; set; } = true;
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
@@ -15,6 +16,7 @@ public class Department
     public Department? ParentDepartment { get; set; }
     public ICollection<Department> SubDepartments { get; set; } = [];
     public ICollection<Staff> StaffMembers { get; set; } = [];
+    public OvertimePolicy? OvertimePolicy { get; set; }
 }
 
 public class Location
@@ -54,11 +56,13 @@ public class Shift
     public TimeSpan? BreakDuration { get; set; }
     public TimeOnly? BreakStartTime { get; set; }
     public bool AutoDeductBreak { get; set; } = true;
+    public Guid? OvertimePolicyId { get; set; }
     public bool IsActive { get; set; } = true;
     public string? Description { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 
     // Navigation properties
+    public OvertimePolicy? OvertimePolicy { get; set; }
     public ICollection<Staff> StaffMembers { get; set; } = [];
 }

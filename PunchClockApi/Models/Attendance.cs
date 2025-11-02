@@ -85,3 +85,52 @@ public class AttendanceCorrection
     public User RequestedByUser { get; set; } = null!;
     public User? ReviewedByUser { get; set; }
 }
+
+public class OvertimePolicy
+{
+    public Guid PolicyId { get; set; }
+    public string PolicyName { get; set; } = null!;
+    public string? PolicyCode { get; set; }
+    public string Description { get; set; } = null!;
+    
+    // Daily overtime thresholds
+    public TimeSpan DailyThreshold { get; set; } = TimeSpan.FromHours(8);
+    public decimal DailyMultiplier { get; set; } = 1.5m; // 1.5x for daily overtime
+    
+    // Weekly overtime thresholds
+    public bool ApplyWeeklyRule { get; set; } = true;
+    public TimeSpan WeeklyThreshold { get; set; } = TimeSpan.FromHours(40);
+    public decimal WeeklyMultiplier { get; set; } = 1.5m;
+    
+    // Weekend overtime
+    public bool ApplyWeekendRule { get; set; } = true;
+    public decimal WeekendMultiplier { get; set; } = 2.0m; // 2x for weekends
+    
+    // Holiday overtime
+    public bool ApplyHolidayRule { get; set; } = true;
+    public decimal HolidayMultiplier { get; set; } = 3.0m; // 3x for holidays
+    
+    // Maximum daily overtime allowed
+    public TimeSpan? MaxDailyOvertime { get; set; }
+    
+    // Minimum overtime increment (e.g., 15 minutes)
+    public int MinimumOvertimeMinutes { get; set; } = 15;
+    
+    // Auto-approval threshold
+    public TimeSpan? AutoApprovalThreshold { get; set; }
+    
+    // Effective dates
+    public DateTime EffectiveFrom { get; set; }
+    public DateTime? EffectiveTo { get; set; }
+    
+    public bool IsActive { get; set; } = true;
+    public bool IsDefault { get; set; } = false;
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+    public Guid? CreatedBy { get; set; }
+    public Guid? UpdatedBy { get; set; }
+
+    // Navigation properties
+    public ICollection<Shift> Shifts { get; set; } = [];
+    public ICollection<Department> Departments { get; set; } = [];
+}

@@ -22,6 +22,7 @@ public class PunchClockDbContext : DbContext
     public DbSet<PunchLog> PunchLogs { get; set; }
     public DbSet<AttendanceRecord> AttendanceRecords { get; set; }
     public DbSet<AttendanceCorrection> AttendanceCorrections { get; set; }
+    public DbSet<OvertimePolicy> OvertimePolicies { get; set; }
     public DbSet<SyncLog> SyncLogs { get; set; }
     public DbSet<AuditLog> AuditLogs { get; set; }
     public DbSet<ExportLog> ExportLogs { get; set; }
@@ -124,10 +125,12 @@ public class PunchClockDbContext : DbContext
             entity.Property(e => e.DepartmentCode).HasColumnName("department_code").HasMaxLength(20);
             entity.Property(e => e.ParentDepartmentId).HasColumnName("parent_department_id");
             entity.Property(e => e.ManagerStaffId).HasColumnName("manager_staff_id");
+            entity.Property(e => e.OvertimePolicyId).HasColumnName("overtime_policy_id");
             entity.Property(e => e.IsActive).HasColumnName("is_active").HasDefaultValue(true);
             entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
             entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
             entity.HasOne(e => e.ParentDepartment).WithMany(d => d.SubDepartments).HasForeignKey(e => e.ParentDepartmentId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.OvertimePolicy).WithMany(p => p.Departments).HasForeignKey(e => e.OvertimePolicyId).OnDelete(DeleteBehavior.SetNull);
             entity.HasIndex(e => e.DepartmentCode).IsUnique();
         });
 
@@ -170,11 +173,13 @@ public class PunchClockDbContext : DbContext
             entity.Property(e => e.BreakDuration).HasColumnName("break_duration");
             entity.Property(e => e.BreakStartTime).HasColumnName("break_start_time");
             entity.Property(e => e.AutoDeductBreak).HasColumnName("auto_deduct_break").HasDefaultValue(true);
+            entity.Property(e => e.OvertimePolicyId).HasColumnName("overtime_policy_id");
             entity.Property(e => e.IsActive).HasColumnName("is_active").HasDefaultValue(true);
             entity.Property(e => e.Description).HasColumnName("description");
             entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
             entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
             entity.HasIndex(e => e.ShiftCode).IsUnique();
+            entity.HasOne(e => e.OvertimePolicy).WithMany(p => p.Shifts).HasForeignKey(e => e.OvertimePolicyId).OnDelete(DeleteBehavior.SetNull);
         });
 
         // Staff
@@ -381,6 +386,39 @@ public class PunchClockDbContext : DbContext
             entity.HasIndex(e => e.RecordId);
             entity.HasIndex(e => e.StaffId);
             entity.HasIndex(e => e.Status);
+        });
+
+        // OvertimePolicy
+        modelBuilder.Entity<OvertimePolicy>(entity =>
+        {
+            entity.ToTable("overtime_policies");
+            entity.HasKey(e => e.PolicyId);
+            entity.Property(e => e.PolicyId).HasColumnName("policy_id").HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(e => e.PolicyName).HasColumnName("policy_name").HasMaxLength(100).IsRequired();
+            entity.Property(e => e.PolicyCode).HasColumnName("policy_code").HasMaxLength(20);
+            entity.Property(e => e.Description).HasColumnName("description").IsRequired();
+            entity.Property(e => e.DailyThreshold).HasColumnName("daily_threshold").HasDefaultValue(TimeSpan.FromHours(8));
+            entity.Property(e => e.DailyMultiplier).HasColumnName("daily_multiplier").HasColumnType("decimal(5,2)").HasDefaultValue(1.5m);
+            entity.Property(e => e.ApplyWeeklyRule).HasColumnName("apply_weekly_rule").HasDefaultValue(true);
+            entity.Property(e => e.WeeklyThreshold).HasColumnName("weekly_threshold").HasDefaultValue(TimeSpan.FromHours(40));
+            entity.Property(e => e.WeeklyMultiplier).HasColumnName("weekly_multiplier").HasColumnType("decimal(5,2)").HasDefaultValue(1.5m);
+            entity.Property(e => e.ApplyWeekendRule).HasColumnName("apply_weekend_rule").HasDefaultValue(true);
+            entity.Property(e => e.WeekendMultiplier).HasColumnName("weekend_multiplier").HasColumnType("decimal(5,2)").HasDefaultValue(2.0m);
+            entity.Property(e => e.ApplyHolidayRule).HasColumnName("apply_holiday_rule").HasDefaultValue(true);
+            entity.Property(e => e.HolidayMultiplier).HasColumnName("holiday_multiplier").HasColumnType("decimal(5,2)").HasDefaultValue(3.0m);
+            entity.Property(e => e.MaxDailyOvertime).HasColumnName("max_daily_overtime");
+            entity.Property(e => e.MinimumOvertimeMinutes).HasColumnName("minimum_overtime_minutes").HasDefaultValue(15);
+            entity.Property(e => e.AutoApprovalThreshold).HasColumnName("auto_approval_threshold");
+            entity.Property(e => e.EffectiveFrom).HasColumnName("effective_from");
+            entity.Property(e => e.EffectiveTo).HasColumnName("effective_to");
+            entity.Property(e => e.IsActive).HasColumnName("is_active").HasDefaultValue(true);
+            entity.Property(e => e.IsDefault).HasColumnName("is_default").HasDefaultValue(false);
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.CreatedBy).HasColumnName("created_by");
+            entity.Property(e => e.UpdatedBy).HasColumnName("updated_by");
+            entity.HasIndex(e => e.PolicyCode).IsUnique();
+            entity.HasIndex(e => e.IsDefault);
         });
 
         // SyncLog

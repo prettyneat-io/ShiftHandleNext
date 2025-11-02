@@ -1002,41 +1002,42 @@ public sealed class LeaveManagementTests : IntegrationTestBase
         await AuthenticateAsAdminAsync();
         using var db = GetDbContext();
         
-        var currentYear = DateTime.UtcNow.Year;
-        var nextYear = currentYear + 1;
+        // Use a far future year to avoid collision with other tests
+        var testYear = 2099;
+        var differentYear = 2100;
         
-        var thisYearHoliday = new Holiday 
+        var testYearHoliday = new Holiday 
         { 
             HolidayId = Guid.NewGuid(), 
-            HolidayName = "This Year", 
-            HolidayDate = new DateOnly(currentYear, 6, 1),
+            HolidayName = "Test Year 2099", 
+            HolidayDate = new DateOnly(testYear, 6, 1),
             IsActive = true,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
         
-        var nextYearHoliday = new Holiday 
+        var differentYearHoliday = new Holiday 
         { 
             HolidayId = Guid.NewGuid(), 
-            HolidayName = "Next Year", 
-            HolidayDate = new DateOnly(nextYear, 6, 1),
+            HolidayName = "Test Year 2100", 
+            HolidayDate = new DateOnly(differentYear, 6, 1),
             IsActive = true,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
         
-        db.Holidays.AddRange(thisYearHoliday, nextYearHoliday);
+        db.Holidays.AddRange(testYearHoliday, differentYearHoliday);
         await db.SaveChangesAsync();
 
         // Act
-        var response = await Client.GetAsync($"/api/leave/holidays?year={currentYear}");
+        var response = await Client.GetAsync($"/api/leave/holidays?year={testYear}");
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var holidays = await response.Content.ReadFromJsonAsync<List<Holiday>>();
         holidays.Should().NotBeNull();
         holidays!.Should().HaveCount(1);
-        holidays![0].HolidayName.Should().Be("This Year");
+        holidays![0].HolidayName.Should().Be("Test Year 2099");
     }
 
     [Fact]
