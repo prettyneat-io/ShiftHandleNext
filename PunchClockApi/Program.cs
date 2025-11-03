@@ -76,6 +76,7 @@ if (!builder.Environment.IsEnvironment("Testing"))
 builder.Services.AddScoped<AttendanceProcessingService>();
 builder.Services.AddScoped<AttendanceProcessingJob>();
 builder.Services.AddScoped<DeviceSyncJob>();
+builder.Services.AddScoped<IReportingService, ReportingService>();
 
 // Configure Hangfire for background jobs (skip in test environment)
 if (!builder.Environment.IsEnvironment("Testing"))

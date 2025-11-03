@@ -19,6 +19,7 @@ ShiftHandleNext/
 │   │   ├── AttendanceController.cs        # Attendance tracking
 │   │   ├── OrganizationController.cs      # Departments & locations
 │   │   ├── UsersController.cs             # User management
+│   │   ├── ReportsController.cs           # Reports & exports (NEW!)
 │   │   ├── SystemController.cs            # Health checks
 │   │   └── BaseController.cs              # Shared query parsing & error handling
 │   ├── Services/
@@ -26,7 +27,9 @@ ShiftHandleNext/
 │   │   ├── IDeviceService.cs              # Device service interface
 │   │   ├── AttendanceProcessingService.cs # Punch log → attendance record processing
 │   │   ├── AttendanceProcessingJob.cs     # Background job for attendance processing
-│   │   └── DeviceSyncJob.cs               # Background job for device synchronization
+│   │   ├── DeviceSyncJob.cs               # Background job for device synchronization
+│   │   ├── ReportingService.cs            # Report generation service (NEW!)
+│   │   └── IReportingService.cs           # Reporting service interface (NEW!)
 │   ├── Device/
 │   │   ├── PyZKClient.cs                  # C# wrapper for PyZK
 │   │   ├── pyzk_wrapper.py                # Python wrapper for ZK devices
@@ -133,7 +136,16 @@ ShiftHandleNext/
 - ✅ **Half-Day Support**: Flexible leave duration (full day, half day, hourly)
 - ✅ **Documentation**: Support for attaching documents to leave requests
 
-### 8. **API Endpoints** (50+ endpoints)
+### 8. **Reporting & Export System** (NEW!)
+- ✅ **Daily Attendance Reports**: Generate daily reports with staff presence, absence, late arrivals
+- ✅ **Monthly Summaries**: Aggregate monthly attendance with statistics
+- ✅ **Payroll Export**: Generate payroll data with regular/overtime hours breakdown
+- ✅ **CSV Export**: Export all reports in CSV format for Excel
+- ✅ **Department Comparison**: Compare attendance metrics across departments
+- ✅ **Export Logging**: Track all report exports in ExportLog table
+- ✅ **Filtering**: Filter reports by location, department, date range
+
+### 9. **API Endpoints** (60+ endpoints)
 
 #### Authentication (Public)
 - `POST /api/auth/login` - User login with JWT token response
@@ -206,6 +218,13 @@ ShiftHandleNext/
 - `POST /api/leave/holidays` - Create new holiday
 - `PUT /api/leave/holidays/{id}` - Update holiday
 - `DELETE /api/leave/holidays/{id}` - Soft delete holiday
+
+#### Reports & Export (Authenticated) (NEW!)
+- `GET /api/reports/daily` - Generate daily attendance report (JSON or CSV)
+- `GET /api/reports/monthly` - Generate monthly attendance summary (JSON or CSV)
+- `GET /api/reports/payroll` - Generate payroll export for date range (JSON or CSV)
+- `GET /api/reports/summary` - Get summary statistics for dashboard
+- `GET /api/reports/departments` - Get department comparison report
 
 #### Organization (Authenticated)
 - `GET /api/departments` - List all departments
@@ -352,6 +371,12 @@ dotnet test
 | GET | `/api/users/{id}` | Admin | Get user details |
 | PUT | `/api/users/{id}` | Admin | Update user |
 | DELETE | `/api/users/{id}` | Admin | Soft delete user |
+| **Reports (NEW!)** ||||
+| GET | `/api/reports/daily` | Yes | Daily attendance report |
+| GET | `/api/reports/monthly` | Yes | Monthly summary |
+| GET | `/api/reports/payroll` | Yes | Payroll export |
+| GET | `/api/reports/summary` | Yes | Dashboard statistics |
+| GET | `/api/reports/departments` | Yes | Department comparison |
 | **System** ||||
 | GET | `/api/health` | No | Health check |
 
@@ -473,10 +498,10 @@ dotnet test
 - [x] **Anomaly detection** - Implemented in AttendanceProcessingService (missing punches, short shifts, odd counts, late/early)
 
 ### Priority 2 - Reporting & Export
-- [ ] Daily attendance reports
-- [ ] Payroll export (CSV/Excel)
+- [x] **Daily attendance reports** - ✅ **COMPLETED**: Daily report endpoint with CSV export
+- [x] **Payroll export (CSV/Excel)** - ✅ **COMPLETED**: Payroll export with overtime breakdown
 - [ ] Custom report builder
-- [ ] Dashboard statistics
+- [x] **Dashboard statistics** - ✅ **COMPLETED**: Summary statistics endpoint
 - [ ] Real-time attendance monitoring
 
 ### Priority 3 - Advanced Features
@@ -738,15 +763,15 @@ Your C# .NET API backend is **production-ready** with full ZKTeco device integra
 - ✅ Database running in Docker
 - ✅ EF Core migrations applied
 - ✅ API server with Swagger and JWT authentication
-- ✅ 20 entity models implemented
-- ✅ 40+ REST endpoints working
+- ✅ 21 entity models implemented
+- ✅ 60+ REST endpoints working
 - ✅ Full ZKTeco device integration (PyZK)
 - ✅ Remote fingerprint enrollment
 - ✅ Device synchronization (staff & attendance)
 - ✅ **Attendance processing engine (PunchLog → AttendanceRecord)**
 - ✅ **Hangfire background jobs (device sync, attendance processing)**
-- ✅ **Leave management system (requests, approvals, balances, holidays)** *(NEW!)*
-- ✅ **Leave management tests (30 comprehensive integration tests)** *(NEW!)*
+- ✅ **Leave management system (requests, approvals, balances, holidays)**
+- ✅ **Reporting & export system (daily, monthly, payroll reports with CSV export)** *(NEW!)*
 - ✅ 89+ integration tests
 - ✅ ZK device simulator for testing
 - ✅ Comprehensive documentation
@@ -767,4 +792,4 @@ Your C# .NET API backend is **production-ready** with full ZKTeco device integra
 
 ---
 
-*Last Updated: November 1, 2025*
+*Last Updated: November 2, 2025*

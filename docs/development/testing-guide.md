@@ -42,6 +42,18 @@ This test project contains comprehensive integration tests that verify the API's
    - Multiple connection cycles
    - Uses real ZK simulator for authentic integration testing
 
+5. **ReportingAndExportTests** (`ReportingAndExportTests.cs`)
+   - Daily attendance reports (JSON and CSV)
+   - Monthly attendance summaries (JSON and CSV)
+   - Payroll export reports (JSON and CSV)
+   - Summary statistics for dashboards
+   - Department comparison reports
+   - Export logging to database
+   - CSV format validation
+   - Data accuracy verification
+   - Performance testing
+   - Filter and date range validation
+
 ### Infrastructure
 
 - **TestWebApplicationFactory**: Custom factory that configures in-memory database
@@ -61,6 +73,7 @@ dotnet test --filter "FullyQualifiedName~AuthenticationTests"
 dotnet test --filter "FullyQualifiedName~QueryOptionsTests"
 dotnet test --filter "FullyQualifiedName~ApiEndpointTests"
 dotnet test --filter "FullyQualifiedName~DeviceIntegrationTests"
+dotnet test --filter "FullyQualifiedName~ReportingAndExportTests"
 ```
 
 ### Run specific test
@@ -144,7 +157,62 @@ dotnet test
 - ✅ Get device users after enrolling staff shows new user
 - ✅ Device info after enrollments reflects updated counts
 
-**Total: 53 tests** (migrated from 3 bash scripts + new device integration tests)
+### Reporting & Export (37 tests)
+
+#### Daily Report Tests (7 tests)
+- ✅ Get daily report returns success with data
+- ✅ Daily report without date uses today
+- ✅ Daily report with location filter returns filtered data
+- ✅ Daily report with department filter returns filtered data
+- ✅ Daily report as CSV returns CSV file
+- ✅ Daily report without auth returns unauthorized
+- ✅ Daily report counts match staff records
+
+#### Monthly Report Tests (7 tests)
+- ✅ Get monthly report returns success with data
+- ✅ Monthly report without year/month uses current month
+- ✅ Monthly report with invalid month returns bad request
+- ✅ Monthly report with location filter returns filtered data
+- ✅ Monthly report as CSV returns CSV file
+- ✅ Monthly report calculates statistics correctly
+- ✅ Monthly report attendance rate is valid (0-100%)
+
+#### Payroll Report Tests (8 tests)
+- ✅ Get payroll report returns success with data
+- ✅ Payroll report without dates uses default values
+- ✅ Payroll report with end date before start date returns bad request
+- ✅ Payroll report with date range exceeding one year returns bad request
+- ✅ Payroll report as CSV returns CSV file
+- ✅ Payroll report includes hours breakdown (regular, overtime, weekend, holiday)
+- ✅ Payroll report with filters returns filtered data
+- ✅ Payroll report days add up correctly
+
+#### Summary Statistics Tests (3 tests)
+- ✅ Get summary statistics returns aggregated data
+- ✅ Summary statistics with end date before start date returns bad request
+- ✅ Summary statistics includes all sections (period, staff, hours, attendance)
+
+#### Department Comparison Tests (3 tests)
+- ✅ Get department comparison returns comparison data
+- ✅ Department comparison with end date before start date returns bad request
+- ✅ Department comparison includes metrics per department
+
+#### Export Logging Tests (3 tests)
+- ✅ CSV export logs export to database
+- ✅ Monthly report CSV export logs with correct date range
+- ✅ Payroll report CSV export logs with filter criteria
+
+#### CSV Format Tests (3 tests)
+- ✅ CSV export has correct content disposition
+- ✅ CSV export handles special characters
+- ✅ Payroll CSV export has descriptive filename
+
+#### Performance Tests (3 tests)
+- ✅ Daily report completes in reasonable time (< 5 seconds)
+- ✅ Monthly report completes in reasonable time (< 10 seconds)
+- ✅ Payroll report completes in reasonable time (< 15 seconds)
+
+**Total: 150 tests** (migrated from 3 bash scripts + new device integration tests + reporting tests)
 
 ## Key Features
 
@@ -237,6 +305,7 @@ PunchClockApi.Tests/
 ├── QueryOptionsTests.cs        # Query parameter tests
 ├── ApiEndpointTests.cs         # CRUD operation tests
 ├── DeviceIntegrationTests.cs   # Device integration tests with ZK simulator
+├── ReportingAndExportTests.cs  # Reporting and export tests
 ├── IntegrationTestBase.cs      # Base class for all tests
 ├── TestWebApplicationFactory.cs # Custom test factory
 ├── TestAuthHelper.cs           # Auth helper methods

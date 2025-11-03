@@ -167,6 +167,15 @@ PunchClockApi/
 ### Users (Requires Authentication)
 - `GET /api/users` - Get all users (admin only)
 
+### Reports & Export (Requires Authentication) *(NEW!)*
+- `GET /api/reports/daily?date={date}&locationId={uuid}&departmentId={uuid}&format={json|csv}` - Daily attendance report
+- `GET /api/reports/monthly?year={year}&month={month}&locationId={uuid}&departmentId={uuid}&format={json|csv}` - Monthly attendance summary
+- `GET /api/reports/payroll?startDate={date}&endDate={date}&locationId={uuid}&departmentId={uuid}&format={json|csv}` - Payroll export with hours breakdown
+- `GET /api/reports/summary?startDate={date}&endDate={date}&locationId={uuid}&departmentId={uuid}` - Summary statistics for dashboards
+- `GET /api/reports/departments?startDate={date}&endDate={date}&locationId={uuid}` - Department comparison report
+
+See [Reporting Guide](../guides/REPORTING_GUIDE.md) for detailed documentation.
+
 ### System (Public)
 - `GET /api/health` - Database health check
 
