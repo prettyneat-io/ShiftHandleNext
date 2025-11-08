@@ -20,6 +20,7 @@ public class Staff
     public DateTime? TerminationDate { get; set; }
     public bool IsActive { get; set; } = true;
     public string EnrollmentStatus { get; set; } = "PENDING";
+    public Guid? UserId { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
     public Guid? CreatedBy { get; set; }
@@ -29,6 +30,7 @@ public class Staff
     public Department? Department { get; set; }
     public Location? Location { get; set; }
     public Shift? Shift { get; set; }
+    public User? User { get; set; }
     public ICollection<BiometricTemplate> BiometricTemplates { get; set; } = [];
     public ICollection<DeviceEnrollment> DeviceEnrollments { get; set; } = [];
     public ICollection<PunchLog> PunchLogs { get; set; } = [];

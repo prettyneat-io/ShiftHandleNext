@@ -325,6 +325,35 @@ public abstract class BaseController<TEntity> : ControllerBase where TEntity : c
         return null;
     }
 
+    /// <summary>
+    /// Check if the current user has a specific permission
+    /// </summary>
+    /// <param name="resource">The resource (e.g., "staff", "devices")</param>
+    /// <param name="action">The action (e.g., "create", "read", "update", "delete")</param>
+    /// <returns>True if user has the permission, false otherwise</returns>
+    protected bool HasPermission(string resource, string action)
+    {
+        if (User?.Identity?.IsAuthenticated is not true) return false;
+        
+        var permissionClaim = $"{resource}:{action}";
+        return User.HasClaim("permission", permissionClaim);
+    }
+
+    /// <summary>
+    /// Check if the current user has the Admin role
+    /// </summary>
+    protected bool IsAdmin() => User?.IsInRole("Admin") ?? false;
+
+    /// <summary>
+    /// Check if the current user has the HR Manager role
+    /// </summary>
+    protected bool IsHRManager() => User?.IsInRole("HR Manager") ?? false;
+
+    /// <summary>
+    /// Check if the current user has the Staff role
+    /// </summary>
+    protected bool IsStaffUser() => User?.IsInRole("Staff") ?? false;
+
     private static bool TryParseInt(string? input, out int value) => int.TryParse(input, NumberStyles.Integer, CultureInfo.InvariantCulture, out value);
 
     private static Dictionary<string, bool>? ParseSelect(string? select)

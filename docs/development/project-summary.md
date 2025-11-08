@@ -95,6 +95,12 @@ ShiftHandleNext/
 - ✅ Password hashing with BCrypt
 - ✅ Token refresh capability
 - ✅ Protected endpoints with `[Authorize]` attribute
+- ✅ **Permission Policy System**: Dynamic policy-based authorization
+- ✅ **Permission Claims**: Embedded in JWT tokens (no DB lookup per request)
+- ✅ **Custom Policy Provider**: `[Authorize(Policy = "resource:action")]` syntax
+- ✅ **Permission Authorization Handler**: Validates permission claims and role hierarchy
+- ✅ **28 Permission Tests**: Comprehensive integration tests for Admin, HR Manager, Staff roles
+- 📖 See: [Permission Policy Status](./PERMISSION_POLICY_STATUS.md) | [Permission Flow Diagram](./PERMISSION_FLOW_DIAGRAM.md)
 
 ### 4. **ZKTeco Device Integration**
 - ✅ **PyZK Integration**: Full Python library integration for ZK devices
@@ -500,11 +506,11 @@ dotnet test
 
 ### Priority 1 - Reporting & Export
 - [x] **Bulk operations (import/export staff)** - ✅ **COMPLETED**: CSV import/export with validation
-- [ ] Real-time attendance monitoring
-- [ ] Email notifications
+- [x] **Permissions** - ✅ **COMPLETED**: Full policy-based authorization system (28 tests passing)
 
-### Priority 3 - Advanced Features
+### Priority 2 - Advanced Features
 - [ ] Custom report builder
+- [ ] Email notifications
 - [ ] Audit log viewer UI
 - [ ] Multi-tenancy support
 
@@ -523,7 +529,7 @@ dotnet test
 
 ## 🧪 Testing
 
-### 7. **Testing** (89+ Integration Tests)
+### 7. **Testing** (117+ Integration Tests)
 The project includes comprehensive integration tests with 100% passing rate:
 
 ```bash
@@ -532,16 +538,18 @@ dotnet test
 
 # Results:
 # ✅ 8 Authentication Tests - Login, registration, protected endpoints
+# ✅ 28 Permission Authorization Tests - Admin, HR Manager, Staff role enforcement (NEW!)
 # ✅ 20 Query Options Tests - Pagination, sorting, filtering, includes
 # ✅ 12 API Endpoint Tests - CRUD operations for all entities
 # ✅ 19 Device Integration Tests - Real ZK simulator integration
 # ✅ 14 Attendance Processing Tests - PunchLog → AttendanceRecord processing
-# ✅ 30 Leave Management Tests - Complete leave system testing (NEW!)
+# ✅ 30 Leave Management Tests - Complete leave system testing
 # ✅ TBD Background Job Tests - Device sync and attendance jobs (tests created, need fixes)
 ```
 
 ### Test Coverage
 - **Authentication**: JWT token generation, user registration, protected routes
+- **Authorization**: Permission policies, role hierarchy, JWT claims validation (NEW!)
 - **Query Parameters**: Pagination, sorting, filtering, eager loading
 - **CRUD Operations**: Staff, departments, locations, devices, attendance
 - **Device Integration**: Connect/disconnect, sync, enrollment, real device simulation

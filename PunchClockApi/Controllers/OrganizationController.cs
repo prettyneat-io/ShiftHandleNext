@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PunchClockApi.Data;
@@ -17,7 +18,15 @@ public sealed class OrganizationController : BaseController<object>
         _db = db;
     }
 
+    /// <summary>
+    /// Get all departments with optional filtering and pagination.
+    /// </summary>
+    /// <remarks>
+    /// Required Permission: departments:manage
+    /// Roles: Admin, HR Manager
+    /// </remarks>
     [HttpGet("departments")]
+    [Authorize(Policy = "departments:manage")]
     public async Task<IActionResult> GetAllDepartments(
         [FromQuery] int? page,
         [FromQuery] int? limit,
@@ -72,7 +81,15 @@ public sealed class OrganizationController : BaseController<object>
         }
     }
 
+    /// <summary>
+    /// Create a new department.
+    /// </summary>
+    /// <remarks>
+    /// Required Permission: departments:manage
+    /// Roles: Admin, HR Manager
+    /// </remarks>
     [HttpPost("departments")]
+    [Authorize(Policy = "departments:manage")]
     public async Task<IActionResult> CreateDepartment([FromBody] Department department)
     {
         try
@@ -92,7 +109,15 @@ public sealed class OrganizationController : BaseController<object>
         }
     }
 
+    /// <summary>
+    /// Get all locations with optional filtering and pagination.
+    /// </summary>
+    /// <remarks>
+    /// Required Permission: locations:manage
+    /// Roles: Admin, HR Manager
+    /// </remarks>
     [HttpGet("locations")]
+    [Authorize(Policy = "locations:manage")]
     public async Task<IActionResult> GetAllLocations(
         [FromQuery] int? page,
         [FromQuery] int? limit,
@@ -147,7 +172,15 @@ public sealed class OrganizationController : BaseController<object>
         }
     }
 
+    /// <summary>
+    /// Create a new location.
+    /// </summary>
+    /// <remarks>
+    /// Required Permission: locations:manage
+    /// Roles: Admin, HR Manager
+    /// </remarks>
     [HttpPost("locations")]
+    [Authorize(Policy = "locations:manage")]
     public async Task<IActionResult> CreateLocation([FromBody] Location location)
     {
         try

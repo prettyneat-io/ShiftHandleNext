@@ -21,7 +21,15 @@ public sealed class LeaveController : BaseController<LeaveRequest>
 
     #region Leave Types
 
+    /// <summary>
+    /// Get all leave types.
+    /// </summary>
+    /// <remarks>
+    /// Required Permission: leave:read
+    /// Roles: Admin, HR Manager, Staff (all can view leave types)
+    /// </remarks>
     [HttpGet("types")]
+    [Authorize(Policy = "leave:read")]
     public async Task<IActionResult> GetLeaveTypes([FromQuery] bool? isActive)
     {
         try
@@ -46,7 +54,15 @@ public sealed class LeaveController : BaseController<LeaveRequest>
         }
     }
 
+    /// <summary>
+    /// Get a specific leave type by ID.
+    /// </summary>
+    /// <remarks>
+    /// Required Permission: leave:read
+    /// Roles: Admin, HR Manager, Staff
+    /// </remarks>
     [HttpGet("types/{id:guid}")]
+    [Authorize(Policy = "leave:read")]
     public async Task<IActionResult> GetLeaveTypeById(Guid id)
     {
         try
@@ -60,7 +76,15 @@ public sealed class LeaveController : BaseController<LeaveRequest>
         }
     }
 
+    /// <summary>
+    /// Create a new leave type.
+    /// </summary>
+    /// <remarks>
+    /// Required Permission: leave:create
+    /// Roles: Admin, HR Manager
+    /// </remarks>
     [HttpPost("types")]
+    [Authorize(Policy = "leave:create")]
     public async Task<IActionResult> CreateLeaveType([FromBody] LeaveType leaveType)
     {
         try
@@ -80,7 +104,15 @@ public sealed class LeaveController : BaseController<LeaveRequest>
         }
     }
 
+    /// <summary>
+    /// Update an existing leave type.
+    /// </summary>
+    /// <remarks>
+    /// Required Permission: leave:update
+    /// Roles: Admin, HR Manager
+    /// </remarks>
     [HttpPut("types/{id:guid}")]
+    [Authorize(Policy = "leave:update")]
     public async Task<IActionResult> UpdateLeaveType(Guid id, [FromBody] LeaveType updatedLeaveType)
     {
         try
@@ -111,7 +143,15 @@ public sealed class LeaveController : BaseController<LeaveRequest>
         }
     }
 
+    /// <summary>
+    /// Delete (soft delete) a leave type.
+    /// </summary>
+    /// <remarks>
+    /// Required Permission: leave:update
+    /// Roles: Admin, HR Manager
+    /// </remarks>
     [HttpDelete("types/{id:guid}")]
+    [Authorize(Policy = "leave:update")]
     public async Task<IActionResult> DeleteLeaveType(Guid id)
     {
         try
@@ -136,7 +176,14 @@ public sealed class LeaveController : BaseController<LeaveRequest>
 
     #region Leave Requests
 
+    /// <summary>
+    /// Get leave requests with optional filtering.
+    /// </summary>
+    /// <remarks>
+    /// Required Permission: leave:read (Admin/HR Manager) OR leave:view_own (Staff viewing own requests)
+    /// </remarks>
     [HttpGet("requests")]
+    [Authorize]
     public async Task<IActionResult> GetLeaveRequests(
         [FromQuery] Guid? staffId,
         [FromQuery] Guid? leaveTypeId,
@@ -148,6 +195,15 @@ public sealed class LeaveController : BaseController<LeaveRequest>
     {
         try
         {
+            // Check permissions
+            var hasReadPermission = HasPermission("leave", "read");
+            var hasViewOwnPermission = HasPermission("leave", "view_own");
+            
+            if (!hasReadPermission && !hasViewOwnPermission)
+            {
+                return Forbid();
+            }
+
             var options = ParseQuery(Request.Query);
             var query = _db.LeaveRequests
                 .Include(lr => lr.Staff)
@@ -155,6 +211,26 @@ public sealed class LeaveController : BaseController<LeaveRequest>
                 .Include(lr => lr.RequestedByUser)
                 .Include(lr => lr.ReviewedByUser)
                 .AsQueryable();
+
+            // If user only has view_own permission, filter to their own requests
+            if (hasViewOwnPermission && !hasReadPermission)
+            {
+                var userId = GetUserId();
+                if (!userId.HasValue)
+                {
+                    return Unauthorized(new { error = "User ID not found in token" });
+                }
+
+                var userStaff = await _db.Staff
+                    .FirstOrDefaultAsync(s => s.UserId == userId.Value);
+                
+                if (userStaff is null)
+                {
+                    return NotFound(new { error = "No staff record linked to your account" });
+                }
+
+                query = query.Where(lr => lr.StaffId == userStaff.StaffId);
+            }
 
             // Apply filters
             if (staffId.HasValue)
@@ -216,11 +292,27 @@ public sealed class LeaveController : BaseController<LeaveRequest>
         }
     }
 
+    /// <summary>
+    /// Get a specific leave request by ID.
+    /// </summary>
+    /// <remarks>
+    /// Required Permission: leave:read (Admin/HR Manager) OR leave:view_own (Staff viewing own request)
+    /// </remarks>
     [HttpGet("requests/{id:guid}")]
+    [Authorize]
     public async Task<IActionResult> GetLeaveRequestById(Guid id)
     {
         try
         {
+            // Check permissions
+            var hasReadPermission = HasPermission("leave", "read");
+            var hasViewOwnPermission = HasPermission("leave", "view_own");
+            
+            if (!hasReadPermission && !hasViewOwnPermission)
+            {
+                return Forbid();
+            }
+
             var request = await _db.LeaveRequests
                 .Include(lr => lr.Staff)
                 .Include(lr => lr.LeaveType)
@@ -229,7 +321,27 @@ public sealed class LeaveController : BaseController<LeaveRequest>
                 .Include(lr => lr.CancelledByUser)
                 .FirstOrDefaultAsync(lr => lr.LeaveRequestId == id);
 
-            return request is not null ? Ok(request) : NotFound();
+            if (request is null) return NotFound();
+
+            // If user only has view_own permission, verify they own this request
+            if (hasViewOwnPermission && !hasReadPermission)
+            {
+                var userId = GetUserId();
+                if (!userId.HasValue)
+                {
+                    return Unauthorized(new { error = "User ID not found in token" });
+                }
+
+                var userStaff = await _db.Staff
+                    .FirstOrDefaultAsync(s => s.UserId == userId.Value);
+                
+                if (userStaff is null || request.StaffId != userStaff.StaffId)
+                {
+                    return Forbid(); // Can only view their own requests
+                }
+            }
+
+            return Ok(request);
         }
         catch (Exception ex)
         {
@@ -237,11 +349,46 @@ public sealed class LeaveController : BaseController<LeaveRequest>
         }
     }
 
+    /// <summary>
+    /// Submit a new leave request.
+    /// </summary>
+    /// <remarks>
+    /// Required Permission: leave:create (Admin/HR Manager) OR leave:request_own (Staff requesting for themselves)
+    /// </remarks>
     [HttpPost("requests")]
+    [Authorize]
     public async Task<IActionResult> SubmitLeaveRequest([FromBody] SubmitLeaveRequestDto dto)
     {
         try
         {
+            // Get current user ID from JWT claims (needed for multiple checks)
+            var userId = GetUserId();
+            if (!userId.HasValue)
+            {
+                return Unauthorized(new { message = "User ID not found in token" });
+            }
+
+            // Check permissions
+            var hasCreatePermission = HasPermission("leave", "create");
+            var hasRequestOwnPermission = HasPermission("leave", "request_own");
+            
+            if (!hasCreatePermission && !hasRequestOwnPermission)
+            {
+                return Forbid();
+            }
+
+            // If user only has request_own permission, verify they're requesting for themselves
+            if (hasRequestOwnPermission && !hasCreatePermission)
+            {
+                var userStaff = await _db.Staff
+                    .FirstOrDefaultAsync(s => s.UserId == userId.Value);
+                
+                if (userStaff is null || dto.StaffId != userStaff.StaffId)
+                {
+                    return Forbid(); // Can only request leave for themselves
+                }
+            }
+
             // Validate staff exists
             var staff = await _db.Staff.FindAsync(dto.StaffId);
             if (staff is null)
@@ -307,14 +454,7 @@ public sealed class LeaveController : BaseController<LeaveRequest>
                 });
             }
 
-            // Get current user ID from JWT claims
-            var userId = GetUserId();
-            if (!userId.HasValue)
-            {
-                return Unauthorized(new { message = "User ID not found in token" });
-            }
-
-            // Create leave request
+            // Create leave request (userId already declared at beginning of method)
             var leaveRequest = new LeaveRequest
             {
                 LeaveRequestId = Guid.NewGuid(),
@@ -361,7 +501,15 @@ public sealed class LeaveController : BaseController<LeaveRequest>
         }
     }
 
+    /// <summary>
+    /// Approve a leave request.
+    /// </summary>
+    /// <remarks>
+    /// Required Permission: leave:approve
+    /// Roles: Admin, HR Manager
+    /// </remarks>
     [HttpPost("requests/{id:guid}/approve")]
+    [Authorize(Policy = "leave:approve")]
     public async Task<IActionResult> ApproveLeaveRequest(Guid id, [FromBody] ReviewLeaveRequestDto dto)
     {
         try
@@ -423,7 +571,15 @@ public sealed class LeaveController : BaseController<LeaveRequest>
         }
     }
 
+    /// <summary>
+    /// Reject a leave request.
+    /// </summary>
+    /// <remarks>
+    /// Required Permission: leave:reject
+    /// Roles: Admin, HR Manager
+    /// </remarks>
     [HttpPost("requests/{id:guid}/reject")]
+    [Authorize(Policy = "leave:reject")]
     public async Task<IActionResult> RejectLeaveRequest(Guid id, [FromBody] ReviewLeaveRequestDto dto)
     {
         try
@@ -484,7 +640,15 @@ public sealed class LeaveController : BaseController<LeaveRequest>
         }
     }
 
+    /// <summary>
+    /// Cancel a leave request.
+    /// </summary>
+    /// <remarks>
+    /// Required Permission: leave:cancel
+    /// Roles: Admin, HR Manager
+    /// </remarks>
     [HttpPost("requests/{id:guid}/cancel")]
+    [Authorize(Policy = "leave:cancel")]
     public async Task<IActionResult> CancelLeaveRequest(Guid id, [FromBody] CancelLeaveRequestDto dto)
     {
         try
@@ -561,7 +725,15 @@ public sealed class LeaveController : BaseController<LeaveRequest>
 
     #region Leave Balance
 
+    /// <summary>
+    /// Get leave balance for a staff member.
+    /// </summary>
+    /// <remarks>
+    /// Required Permission: leave:read
+    /// Roles: Admin, HR Manager, Staff (can view own balance)
+    /// </remarks>
     [HttpGet("balance/{staffId:guid}")]
+    [Authorize(Policy = "leave:read")]
     public async Task<IActionResult> GetLeaveBalance(Guid staffId, [FromQuery] int? year)
     {
         try
@@ -581,7 +753,15 @@ public sealed class LeaveController : BaseController<LeaveRequest>
         }
     }
 
+    /// <summary>
+    /// Create or update leave balance for a staff member.
+    /// </summary>
+    /// <remarks>
+    /// Required Permission: leave:update
+    /// Roles: Admin, HR Manager
+    /// </remarks>
     [HttpPost("balance")]
+    [Authorize(Policy = "leave:update")]
     public async Task<IActionResult> CreateOrUpdateLeaveBalance([FromBody] LeaveBalanceDto dto)
     {
         try
@@ -639,7 +819,15 @@ public sealed class LeaveController : BaseController<LeaveRequest>
 
     #region Holidays
 
+    /// <summary>
+    /// Get holidays with optional filtering.
+    /// </summary>
+    /// <remarks>
+    /// Required Permission: leave:read
+    /// Roles: Admin, HR Manager, Staff (all can view holidays)
+    /// </remarks>
     [HttpGet("holidays")]
+    [Authorize(Policy = "leave:read")]
     public async Task<IActionResult> GetHolidays(
         [FromQuery] int? year,
         [FromQuery] Guid? locationId,
@@ -681,7 +869,15 @@ public sealed class LeaveController : BaseController<LeaveRequest>
         }
     }
 
+    /// <summary>
+    /// Get a specific holiday by ID.
+    /// </summary>
+    /// <remarks>
+    /// Required Permission: leave:read
+    /// Roles: Admin, HR Manager, Staff
+    /// </remarks>
     [HttpGet("holidays/{id:guid}")]
+    [Authorize(Policy = "leave:read")]
     public async Task<IActionResult> GetHolidayById(Guid id)
     {
         try
@@ -698,7 +894,15 @@ public sealed class LeaveController : BaseController<LeaveRequest>
         }
     }
 
+    /// <summary>
+    /// Create a new holiday.
+    /// </summary>
+    /// <remarks>
+    /// Required Permission: leave:create
+    /// Roles: Admin, HR Manager
+    /// </remarks>
     [HttpPost("holidays")]
+    [Authorize(Policy = "leave:create")]
     public async Task<IActionResult> CreateHoliday([FromBody] Holiday holiday)
     {
         try
@@ -718,7 +922,15 @@ public sealed class LeaveController : BaseController<LeaveRequest>
         }
     }
 
+    /// <summary>
+    /// Update an existing holiday.
+    /// </summary>
+    /// <remarks>
+    /// Required Permission: leave:update
+    /// Roles: Admin, HR Manager
+    /// </remarks>
     [HttpPut("holidays/{id:guid}")]
+    [Authorize(Policy = "leave:update")]
     public async Task<IActionResult> UpdateHoliday(Guid id, [FromBody] Holiday updatedHoliday)
     {
         try
@@ -745,7 +957,15 @@ public sealed class LeaveController : BaseController<LeaveRequest>
         }
     }
 
+    /// <summary>
+    /// Delete (soft delete) a holiday.
+    /// </summary>
+    /// <remarks>
+    /// Required Permission: leave:update
+    /// Roles: Admin, HR Manager
+    /// </remarks>
     [HttpDelete("holidays/{id:guid}")]
+    [Authorize(Policy = "leave:update")]
     public async Task<IActionResult> DeleteHoliday(Guid id)
     {
         try

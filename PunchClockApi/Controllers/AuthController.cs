@@ -178,6 +178,8 @@ public sealed class AuthController : BaseController<User>
             var user = await _db.Users
                 .Include(u => u.UserRoles)
                     .ThenInclude(ur => ur.Role)
+                        .ThenInclude(r => r.RolePermissions)
+                            .ThenInclude(rp => rp.Permission)
                 .FirstOrDefaultAsync(u =>
                     u.PasswordResetToken == request.RefreshToken &&
                     u.PasswordResetExpires > DateTime.UtcNow);
@@ -326,6 +328,13 @@ public sealed class AuthController : BaseController<User>
         foreach (var userRole in user.UserRoles)
         {
             claims.Add(new Claim(ClaimTypes.Role, userRole.Role.RoleName));
+            
+            // Add permission claims for each role
+            foreach (var rolePermission in userRole.Role.RolePermissions)
+            {
+                var permission = rolePermission.Permission;
+                claims.Add(new Claim("permission", $"{permission.Resource}:{permission.Action}"));
+            }
         }
 
         var token = new JwtSecurityToken(
@@ -347,20 +356,11 @@ public sealed class AuthController : BaseController<User>
         return Convert.ToBase64String(randomBytes);
     }
 
-    private static string HashPassword(string password)
-    {
-        // Using BCrypt would be better in production
-        // For now, using simple SHA256 (NOT recommended for production)
-        using var sha256 = SHA256.Create();
-        var hashedBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(password));
-        return Convert.ToBase64String(hashedBytes);
-    }
+    private static string HashPassword(string password) 
+        => BCrypt.Net.BCrypt.HashPassword(password);
 
-    private static bool VerifyPassword(string password, string passwordHash)
-    {
-        var hashedInput = HashPassword(password);
-        return hashedInput == passwordHash;
-    }
+    private static bool VerifyPassword(string password, string passwordHash) 
+        => BCrypt.Net.BCrypt.Verify(password, passwordHash);
 }
 
 public sealed record LoginRequest(string Username, string Password);

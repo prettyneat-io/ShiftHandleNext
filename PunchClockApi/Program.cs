@@ -130,6 +130,9 @@ builder.Services.AddAuthentication(options =>
 });
 
 // Configure Authorization - require authentication by default
+builder.Services.AddSingleton<Microsoft.AspNetCore.Authorization.IAuthorizationPolicyProvider, PunchClockApi.Authorization.PermissionPolicyProvider>();
+builder.Services.AddScoped<Microsoft.AspNetCore.Authorization.IAuthorizationHandler, PunchClockApi.Authorization.PermissionAuthorizationHandler>();
+
 builder.Services.AddAuthorization(options =>
 {
     options.FallbackPolicy = new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder()

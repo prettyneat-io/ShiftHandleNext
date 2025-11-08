@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PunchClockApi.Data;
@@ -23,7 +24,14 @@ public sealed class AttendanceController : BaseController<object>
         _attendanceService = attendanceService;
     }
 
+    /// <summary>
+    /// Get punch logs with optional filtering.
+    /// </summary>
+    /// <remarks>
+    /// Required Permission: attendance:read (Admin/HR Manager) OR attendance:view_own (Staff viewing own records)
+    /// </remarks>
     [HttpGet("logs")]
+    [Authorize]
     public async Task<IActionResult> GetPunchLogs(
         [FromQuery] DateTime? startDate,
         [FromQuery] DateTime? endDate,
@@ -37,9 +45,38 @@ public sealed class AttendanceController : BaseController<object>
     {
         try
         {
+            // Check permissions
+            var hasReadPermission = HasPermission("attendance", "read");
+            var hasViewOwnPermission = HasPermission("attendance", "view_own");
+            
+            if (!hasReadPermission && !hasViewOwnPermission)
+            {
+                return Forbid();
+            }
+
             var options = ParseQuery(Request.Query);
 
             var query = _db.PunchLogs.AsQueryable();
+
+            // If user only has view_own permission, filter to their own records
+            if (hasViewOwnPermission && !hasReadPermission)
+            {
+                var userId = GetUserId();
+                if (!userId.HasValue)
+                {
+                    return Unauthorized(new { error = "User ID not found in token" });
+                }
+
+                var userStaff = await _db.Staff
+                    .FirstOrDefaultAsync(s => s.UserId == userId.Value);
+                
+                if (userStaff is null)
+                {
+                    return NotFound(new { error = "No staff record linked to your account" });
+                }
+
+                query = query.Where(p => p.StaffId == userStaff.StaffId);
+            }
 
             // Apply domain-specific filters
             if (startDate.HasValue)
@@ -81,7 +118,14 @@ public sealed class AttendanceController : BaseController<object>
         }
     }
 
+    /// <summary>
+    /// Get attendance records with optional filtering.
+    /// </summary>
+    /// <remarks>
+    /// Required Permission: attendance:read (Admin/HR Manager) OR attendance:view_own (Staff viewing own records)
+    /// </remarks>
     [HttpGet("records")]
+    [Authorize]
     public async Task<IActionResult> GetAttendanceRecords(
         [FromQuery] DateOnly? startDate,
         [FromQuery] DateOnly? endDate,
@@ -94,9 +138,38 @@ public sealed class AttendanceController : BaseController<object>
     {
         try
         {
+            // Check permissions
+            var hasReadPermission = HasPermission("attendance", "read");
+            var hasViewOwnPermission = HasPermission("attendance", "view_own");
+            
+            if (!hasReadPermission && !hasViewOwnPermission)
+            {
+                return Forbid();
+            }
+
             var options = ParseQuery(Request.Query);
 
             var query = _db.AttendanceRecords.AsQueryable();
+
+            // If user only has view_own permission, filter to their own records
+            if (hasViewOwnPermission && !hasReadPermission)
+            {
+                var userId = GetUserId();
+                if (!userId.HasValue)
+                {
+                    return Unauthorized(new { error = "User ID not found in token" });
+                }
+
+                var userStaff = await _db.Staff
+                    .FirstOrDefaultAsync(s => s.UserId == userId.Value);
+                
+                if (userStaff is null)
+                {
+                    return NotFound(new { error = "No staff record linked to your account" });
+                }
+
+                query = query.Where(a => a.StaffId == userStaff.StaffId);
+            }
 
             // Apply domain-specific filters
             if (startDate.HasValue)
@@ -133,7 +206,15 @@ public sealed class AttendanceController : BaseController<object>
         }
     }
 
+    /// <summary>
+    /// Create a new punch log manually.
+    /// </summary>
+    /// <remarks>
+    /// Required Permission: attendance:update
+    /// Roles: Admin, HR Manager
+    /// </remarks>
     [HttpPost("logs")]
+    [Authorize(Policy = "attendance:update")]
     public async Task<IActionResult> CreatePunchLog([FromBody] PunchLog log)
     {
         try
@@ -163,7 +244,15 @@ public sealed class AttendanceController : BaseController<object>
         }
     }
 
+    /// <summary>
+    /// Get attendance corrections with optional filtering.
+    /// </summary>
+    /// <remarks>
+    /// Required Permission: attendance:read
+    /// Roles: Admin, HR Manager
+    /// </remarks>
     [HttpGet("corrections")]
+    [Authorize(Policy = "attendance:read")]
     public async Task<IActionResult> GetCorrections(
         [FromQuery] Guid? staffId,
         [FromQuery] string? status,
@@ -206,7 +295,15 @@ public sealed class AttendanceController : BaseController<object>
         }
     }
 
+    /// <summary>
+    /// Get a specific correction by ID.
+    /// </summary>
+    /// <remarks>
+    /// Required Permission: attendance:read
+    /// Roles: Admin, HR Manager
+    /// </remarks>
     [HttpGet("corrections/{id:guid}")]
+    [Authorize(Policy = "attendance:read")]
     public async Task<IActionResult> GetCorrectionById(Guid id)
     {
         try
@@ -231,7 +328,15 @@ public sealed class AttendanceController : BaseController<object>
         }
     }
 
+    /// <summary>
+    /// Create a new attendance correction request.
+    /// </summary>
+    /// <remarks>
+    /// Required Permission: attendance:update
+    /// Roles: Admin, HR Manager
+    /// </remarks>
     [HttpPost("corrections")]
+    [Authorize(Policy = "attendance:update")]
     public async Task<IActionResult> CreateCorrection([FromBody] AttendanceCorrection correction)
     {
         try
@@ -268,7 +373,15 @@ public sealed class AttendanceController : BaseController<object>
         }
     }
 
+    /// <summary>
+    /// Approve an attendance correction request.
+    /// </summary>
+    /// <remarks>
+    /// Required Permission: attendance:update
+    /// Roles: Admin, HR Manager
+    /// </remarks>
     [HttpPost("corrections/{id:guid}/approve")]
+    [Authorize(Policy = "attendance:update")]
     public async Task<IActionResult> ApproveCorrection(Guid id, [FromBody] ApprovalRequest request)
     {
         try
@@ -323,7 +436,15 @@ public sealed class AttendanceController : BaseController<object>
         }
     }
 
+    /// <summary>
+    /// Reject an attendance correction request.
+    /// </summary>
+    /// <remarks>
+    /// Required Permission: attendance:update
+    /// Roles: Admin, HR Manager
+    /// </remarks>
     [HttpPost("corrections/{id:guid}/reject")]
+    [Authorize(Policy = "attendance:update")]
     public async Task<IActionResult> RejectCorrection(Guid id, [FromBody] ApprovalRequest request)
     {
         try
@@ -357,7 +478,15 @@ public sealed class AttendanceController : BaseController<object>
         }
     }
 
+    /// <summary>
+    /// Bulk approve or reject multiple attendance correction requests.
+    /// </summary>
+    /// <remarks>
+    /// Required Permission: attendance:update
+    /// Roles: Admin, HR Manager
+    /// </remarks>
     [HttpPost("corrections/bulk-approve")]
+    [Authorize(Policy = "attendance:update")]
     public async Task<IActionResult> BulkApproveCorrections([FromBody] BulkCorrectionRequest request)
     {
         try

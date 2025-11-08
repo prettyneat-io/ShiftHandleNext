@@ -6,9 +6,13 @@ using PunchClockApi.Models;
 
 namespace PunchClockApi.Controllers;
 
-[Authorize]
+/// <summary>
+/// Controller for managing overtime policies.
+/// Requires 'overtime:manage' permission for all operations.
+/// </summary>
 [ApiController]
 [Route("api/overtime-policies")]
+[Authorize(Policy = "overtime:manage")]
 public sealed class OvertimePolicyController : BaseController<OvertimePolicy>
 {
     private readonly PunchClockDbContext _db;
@@ -19,6 +23,10 @@ public sealed class OvertimePolicyController : BaseController<OvertimePolicy>
         _db = db;
     }
 
+    /// <summary>
+    /// Get all overtime policies with optional filtering.
+    /// Permission: overtime:manage
+    /// </summary>
     [HttpGet]
     public async Task<IActionResult> GetAllPolicies(
         [FromQuery] int? page,
@@ -77,6 +85,10 @@ public sealed class OvertimePolicyController : BaseController<OvertimePolicy>
         }
     }
 
+    /// <summary>
+    /// Get a specific overtime policy by ID.
+    /// Permission: overtime:manage
+    /// </summary>
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id)
     {
@@ -95,6 +107,10 @@ public sealed class OvertimePolicyController : BaseController<OvertimePolicy>
         }
     }
 
+    /// <summary>
+    /// Get the current default overtime policy.
+    /// Permission: overtime:manage
+    /// </summary>
     [HttpGet("default")]
     public async Task<IActionResult> GetDefaultPolicy()
     {
@@ -116,6 +132,10 @@ public sealed class OvertimePolicyController : BaseController<OvertimePolicy>
         }
     }
 
+    /// <summary>
+    /// Create a new overtime policy.
+    /// Permission: overtime:manage
+    /// </summary>
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] OvertimePolicy policy)
     {
@@ -143,6 +163,10 @@ public sealed class OvertimePolicyController : BaseController<OvertimePolicy>
         }
     }
 
+    /// <summary>
+    /// Update an existing overtime policy.
+    /// Permission: overtime:manage
+    /// </summary>
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] OvertimePolicy updatedPolicy)
     {
@@ -190,6 +214,10 @@ public sealed class OvertimePolicyController : BaseController<OvertimePolicy>
         }
     }
 
+    /// <summary>
+    /// Delete (soft delete) an overtime policy.
+    /// Permission: overtime:manage
+    /// </summary>
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id)
     {
@@ -227,6 +255,10 @@ public sealed class OvertimePolicyController : BaseController<OvertimePolicy>
         }
     }
 
+    /// <summary>
+    /// Set a specific overtime policy as the default.
+    /// Permission: overtime:manage
+    /// </summary>
     [HttpPost("{id:guid}/set-default")]
     public async Task<IActionResult> SetAsDefault(Guid id)
     {

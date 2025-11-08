@@ -5,11 +5,11 @@ using PunchClockApi.Services;
 namespace PunchClockApi.Controllers;
 
 /// <summary>
-/// Controller for generating and exporting attendance and payroll reports
+/// Controller for generating and exporting attendance and payroll reports.
+/// All endpoints require specific report permissions.
 /// </summary>
 [ApiController]
 [Route("api/reports")]
-[Authorize]
 public sealed class ReportsController : BaseController<object>
 {
     private readonly IReportingService _reportingService;
@@ -23,7 +23,8 @@ public sealed class ReportsController : BaseController<object>
     }
 
     /// <summary>
-    /// Generate daily attendance report
+    /// Generate daily attendance report.
+    /// Permission: reports:generate
     /// </summary>
     /// <param name="date">Date for the report (defaults to today)</param>
     /// <param name="locationId">Optional location filter</param>
@@ -31,6 +32,7 @@ public sealed class ReportsController : BaseController<object>
     /// <param name="format">Export format: json (default) or csv</param>
     /// <returns>Daily attendance report</returns>
     [HttpGet("daily")]
+    [Authorize(Policy = "reports:generate")]
     public async Task<IActionResult> GetDailyReport(
         [FromQuery] DateOnly? date,
         [FromQuery] Guid? locationId,
@@ -44,6 +46,12 @@ public sealed class ReportsController : BaseController<object>
 
             if (format.ToLower() == "csv")
             {
+                // Check export permission for CSV exports
+                if (!HasPermission("reports", "export"))
+                {
+                    return Forbid();
+                }
+
                 var csvData = await _reportingService.ExportToCsvAsync(report.Entries, "DailyAttendance");
                 
                 // Log the export
@@ -74,7 +82,8 @@ public sealed class ReportsController : BaseController<object>
     }
 
     /// <summary>
-    /// Generate monthly attendance summary report
+    /// Generate monthly attendance summary report.
+    /// Permission: reports:generate
     /// </summary>
     /// <param name="year">Year for the report (defaults to current year)</param>
     /// <param name="month">Month for the report (defaults to current month)</param>
@@ -83,6 +92,7 @@ public sealed class ReportsController : BaseController<object>
     /// <param name="format">Export format: json (default) or csv</param>
     /// <returns>Monthly attendance summary</returns>
     [HttpGet("monthly")]
+    [Authorize(Policy = "reports:generate")]
     public async Task<IActionResult> GetMonthlyReport(
         [FromQuery] int? year,
         [FromQuery] int? month,
@@ -110,6 +120,12 @@ public sealed class ReportsController : BaseController<object>
 
             if (format.ToLower() == "csv")
             {
+                // Check export permission for CSV exports
+                if (!HasPermission("reports", "export"))
+                {
+                    return Forbid();
+                }
+
                 var csvData = await _reportingService.ExportToCsvAsync(report.Entries, "MonthlyAttendance");
                 
                 // Log the export
@@ -143,7 +159,8 @@ public sealed class ReportsController : BaseController<object>
     }
 
     /// <summary>
-    /// Generate payroll export report for a date range
+    /// Generate payroll export report for a date range.
+    /// Permission: reports:generate
     /// </summary>
     /// <param name="startDate">Start date of the period</param>
     /// <param name="endDate">End date of the period</param>
@@ -152,6 +169,7 @@ public sealed class ReportsController : BaseController<object>
     /// <param name="format">Export format: json (default) or csv</param>
     /// <returns>Payroll export data</returns>
     [HttpGet("payroll")]
+    [Authorize(Policy = "reports:generate")]
     public async Task<IActionResult> GetPayrollReport(
         [FromQuery] DateOnly startDate,
         [FromQuery] DateOnly endDate,
@@ -181,6 +199,12 @@ public sealed class ReportsController : BaseController<object>
 
             if (format.ToLower() == "csv")
             {
+                // Check export permission for CSV exports
+                if (!HasPermission("reports", "export"))
+                {
+                    return Forbid();
+                }
+
                 var csvData = await _reportingService.ExportToCsvAsync(report.Entries, "Payroll");
                 
                 // Log the export
@@ -211,7 +235,8 @@ public sealed class ReportsController : BaseController<object>
     }
 
     /// <summary>
-    /// Get summary statistics for a date range (useful for dashboards)
+    /// Get summary statistics for a date range (useful for dashboards).
+    /// Permission: reports:generate
     /// </summary>
     /// <param name="startDate">Start date</param>
     /// <param name="endDate">End date</param>
@@ -219,6 +244,7 @@ public sealed class ReportsController : BaseController<object>
     /// <param name="departmentId">Optional department filter</param>
     /// <returns>Summary statistics</returns>
     [HttpGet("summary")]
+    [Authorize(Policy = "reports:generate")]
     public async Task<IActionResult> GetSummaryStatistics(
         [FromQuery] DateOnly startDate,
         [FromQuery] DateOnly endDate,
@@ -281,13 +307,15 @@ public sealed class ReportsController : BaseController<object>
     }
 
     /// <summary>
-    /// Get department comparison report
+    /// Get department comparison report.
+    /// Permission: reports:generate
     /// </summary>
     /// <param name="startDate">Start date</param>
     /// <param name="endDate">End date</param>
     /// <param name="locationId">Optional location filter</param>
     /// <returns>Department comparison data</returns>
     [HttpGet("departments")]
+    [Authorize(Policy = "reports:generate")]
     public async Task<IActionResult> GetDepartmentComparison(
         [FromQuery] DateOnly startDate,
         [FromQuery] DateOnly endDate,

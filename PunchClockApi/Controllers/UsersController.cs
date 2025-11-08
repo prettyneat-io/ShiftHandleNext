@@ -22,6 +22,7 @@ public sealed class UsersController : BaseController<User>
     }
 
     [HttpGet]
+    [Authorize(Policy = "users:read")]
     public async Task<IActionResult> GetAll([FromQuery] int? page, [FromQuery] int? limit)
     {
         try
@@ -65,6 +66,7 @@ public sealed class UsersController : BaseController<User>
     }
 
     [HttpGet("{id:guid}")]
+    [Authorize(Policy = "users:read")]
     public async Task<IActionResult> GetById(Guid id)
     {
         try
@@ -120,7 +122,7 @@ public sealed class UsersController : BaseController<User>
     }
 
     [HttpPost]
-    [Authorize(Roles = "Admin")] // Only admins can create users
+    [Authorize(Policy = "users:create")]
     public async Task<IActionResult> Create([FromBody] CreateUserRequest request)
     {
         try
@@ -179,6 +181,7 @@ public sealed class UsersController : BaseController<User>
     }
 
     [HttpPut("{id:guid}")]
+    [Authorize(Policy = "users:update")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateUserRequest request)
     {
         try
@@ -245,7 +248,7 @@ public sealed class UsersController : BaseController<User>
     }
 
     [HttpDelete("{id:guid}")]
-    [Authorize(Roles = "Admin")] // Only admins can delete users
+    [Authorize(Policy = "users:delete")]
     public async Task<IActionResult> Delete(Guid id)
     {
         try
@@ -281,8 +284,12 @@ public sealed class UsersController : BaseController<User>
         }
     }
 
+    /// <summary>
+    /// Assign a role to a user
+    /// HR Managers cannot assign the Admin role - only Admins can
+    /// </summary>
     [HttpPost("{id:guid}/roles/{roleId:guid}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Policy = "users:assign_roles")]
     public async Task<IActionResult> AssignRole(Guid id, Guid roleId, [FromBody] AssignRoleRequest? request = null)
     {
         try
@@ -297,6 +304,19 @@ public sealed class UsersController : BaseController<User>
             if (role is null)
             {
                 return NotFound(new { success = false, error = "Role not found" });
+            }
+
+            // Prevent HR Managers from assigning Admin role
+            // Only Admins can assign the Admin role
+            if (role.RoleName == "Admin" && !User.IsInRole("Admin"))
+            {
+                Logger.LogWarning("User {CurrentUser} attempted to assign Admin role - denied", 
+                    GetUserIdClaim());
+                return StatusCode(403, new 
+                { 
+                    success = false, 
+                    error = "Only Admins can assign the Admin role" 
+                });
             }
 
             // Check if already assigned
@@ -322,8 +342,8 @@ public sealed class UsersController : BaseController<User>
             _db.UserRoles.Add(userRole);
             await _db.SaveChangesAsync();
 
-            Logger.LogInformation("Role {RoleId} assigned to user {UserId} by {CurrentUserId}",
-                roleId, id, currentUserId);
+            Logger.LogInformation("Role {RoleName} ({RoleId}) assigned to user {UserId} by {CurrentUserId}",
+                role.RoleName, roleId, id, currentUserId);
 
             return Ok(new { success = true, message = "Role assigned successfully" });
         }
@@ -334,7 +354,7 @@ public sealed class UsersController : BaseController<User>
     }
 
     [HttpDelete("{id:guid}/roles/{roleId:guid}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Policy = "users:assign_roles")]
     public async Task<IActionResult> RemoveRole(Guid id, Guid roleId)
     {
         try
@@ -420,18 +440,11 @@ public sealed class UsersController : BaseController<User>
         }
     }
 
-    private static string HashPassword(string password)
-    {
-        using var sha256 = SHA256.Create();
-        var hashedBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(password));
-        return Convert.ToBase64String(hashedBytes);
-    }
+    private static string HashPassword(string password) 
+        => BCrypt.Net.BCrypt.HashPassword(password);
 
-    private static bool VerifyPassword(string password, string passwordHash)
-    {
-        var hashedInput = HashPassword(password);
-        return hashedInput == passwordHash;
-    }
+    private static bool VerifyPassword(string password, string passwordHash) 
+        => BCrypt.Net.BCrypt.Verify(password, passwordHash);
 }
 
 public sealed record CreateUserRequest(

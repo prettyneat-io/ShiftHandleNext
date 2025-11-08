@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PunchClockApi.Data;
@@ -5,8 +6,13 @@ using PunchClockApi.Models;
 
 namespace PunchClockApi.Controllers;
 
+/// <summary>
+/// Controller for managing work shifts.
+/// Requires 'shifts:manage' permission for all operations.
+/// </summary>
 [ApiController]
 [Route("api/shifts")]
+[Authorize(Policy = "shifts:manage")]
 public sealed class ShiftController : BaseController<Shift>
 {
     private readonly PunchClockDbContext _db;
@@ -17,6 +23,10 @@ public sealed class ShiftController : BaseController<Shift>
         _db = db;
     }
 
+    /// <summary>
+    /// Get all shifts with optional filtering, sorting, and pagination.
+    /// Permission: shifts:manage
+    /// </summary>
     [HttpGet]
     public async Task<IActionResult> GetAllShifts(
         [FromQuery] int? page,
@@ -70,6 +80,10 @@ public sealed class ShiftController : BaseController<Shift>
         }
     }
 
+    /// <summary>
+    /// Get a specific shift by ID.
+    /// Permission: shifts:manage
+    /// </summary>
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetShiftById(Guid id)
     {
@@ -87,6 +101,10 @@ public sealed class ShiftController : BaseController<Shift>
         }
     }
 
+    /// <summary>
+    /// Create a new shift.
+    /// Permission: shifts:manage
+    /// </summary>
     [HttpPost]
     public async Task<IActionResult> CreateShift([FromBody] Shift shift)
     {
@@ -107,6 +125,10 @@ public sealed class ShiftController : BaseController<Shift>
         }
     }
 
+    /// <summary>
+    /// Update an existing shift.
+    /// Permission: shifts:manage
+    /// </summary>
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> UpdateShift(Guid id, [FromBody] Shift updatedShift)
     {
@@ -141,6 +163,10 @@ public sealed class ShiftController : BaseController<Shift>
         }
     }
 
+    /// <summary>
+    /// Delete (soft delete) a shift.
+    /// Permission: shifts:manage
+    /// </summary>
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> DeleteShift(Guid id)
     {
@@ -163,6 +189,10 @@ public sealed class ShiftController : BaseController<Shift>
         }
     }
 
+    /// <summary>
+    /// Bulk assign staff members to a shift.
+    /// Permission: shifts:manage
+    /// </summary>
     [HttpPost("assign-staff")]
     public async Task<IActionResult> AssignStaffToShift([FromBody] BulkShiftAssignmentRequest request)
     {
@@ -222,6 +252,10 @@ public sealed class ShiftController : BaseController<Shift>
         }
     }
 
+    /// <summary>
+    /// Unassign a staff member from their shift.
+    /// Permission: shifts:manage
+    /// </summary>
     [HttpDelete("unassign-staff/{staffId:guid}")]
     public async Task<IActionResult> UnassignStaffFromShift(Guid staffId)
     {

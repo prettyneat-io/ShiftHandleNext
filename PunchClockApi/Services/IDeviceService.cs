@@ -69,8 +69,9 @@ public interface IDeviceService
     /// </summary>
     /// <param name="device">Device entity</param>
     /// <param name="staff">Staff entity to add</param>
+    /// <param name="canBeAdmin">Whether the user can be set as device administrator (false for Staff self-enrollment)</param>
     /// <returns>Operation response</returns>
-    Task<OperationResponse> AddUserToDeviceAsync(Device device, Staff staff);
+    Task<OperationResponse> AddUserToDeviceAsync(Device device, Staff staff, bool canBeAdmin = true);
 
     /// <summary>
     /// Deletes a user from a device
@@ -93,8 +94,9 @@ public interface IDeviceService
     /// <param name="device">Device entity</param>
     /// <param name="staff">Staff entity to enroll</param>
     /// <param name="fingerId">Finger index (0-9)</param>
+    /// <param name="canBeAdmin">Whether the user can be set as device administrator (false for Staff self-enrollment)</param>
     /// <returns>Operation response</returns>
-    Task<OperationResponse> EnrollUserFingerprintAsync(Device device, Staff staff, int fingerId = 0);
+    Task<OperationResponse> EnrollUserFingerprintAsync(Device device, Staff staff, int fingerId = 0, bool canBeAdmin = true);
 
     /// <summary>
     /// Synchronizes attendance records from a device by device ID

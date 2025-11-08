@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PunchClockApi.Data;
@@ -23,7 +24,11 @@ public sealed class StaffController : BaseController<Staff>
         _importExportService = importExportService;
     }
 
+    /// <summary>
+    /// Get all staff with optional filtering, sorting, and pagination
+    /// </summary>
     [HttpGet]
+    [Authorize(Policy = "staff:read")]
     public async Task<IActionResult> GetAllStaff(
         [FromQuery] int? page,
         [FromQuery] int? limit,
@@ -78,7 +83,11 @@ public sealed class StaffController : BaseController<Staff>
         }
     }
 
+    /// <summary>
+    /// Get a specific staff member by ID
+    /// </summary>
     [HttpGet("{id:guid}")]
+    [Authorize(Policy = "staff:read")]
     public async Task<IActionResult> GetStaffById(Guid id)
     {
         try
@@ -98,7 +107,11 @@ public sealed class StaffController : BaseController<Staff>
         }
     }
 
+    /// <summary>
+    /// Create a new staff member
+    /// </summary>
     [HttpPost]
+    [Authorize(Policy = "staff:create")]
     public async Task<IActionResult> CreateStaff([FromBody] Staff staff)
     {
         try
@@ -118,7 +131,11 @@ public sealed class StaffController : BaseController<Staff>
         }
     }
 
+    /// <summary>
+    /// Update an existing staff member
+    /// </summary>
     [HttpPut("{id:guid}")]
+    [Authorize(Policy = "staff:update")]
     public async Task<IActionResult> UpdateStaff(Guid id, [FromBody] Staff updatedStaff)
     {
         try
@@ -150,7 +167,11 @@ public sealed class StaffController : BaseController<Staff>
         }
     }
 
+    /// <summary>
+    /// Soft delete a staff member (sets IsActive = false)
+    /// </summary>
     [HttpDelete("{id:guid}")]
+    [Authorize(Policy = "staff:delete")]
     public async Task<IActionResult> DeleteStaff(Guid id)
     {
         try
@@ -177,6 +198,7 @@ public sealed class StaffController : BaseController<Staff>
     /// <param name="includeInactive">Include inactive staff in export</param>
     /// <returns>CSV file download</returns>
     [HttpGet("export/csv")]
+    [Authorize(Policy = "staff:export")]
     public async Task<IActionResult> ExportStaffToCsv([FromQuery] bool includeInactive = false)
     {
         try
@@ -199,6 +221,7 @@ public sealed class StaffController : BaseController<Staff>
     /// <param name="updateExisting">Update existing staff records if EmployeeId matches</param>
     /// <returns>Import results with success/error details</returns>
     [HttpPost("import/csv")]
+    [Authorize(Policy = "staff:import")]
     public async Task<IActionResult> ImportStaffFromCsv(
         IFormFile? file,
         [FromQuery] bool updateExisting = false)
@@ -254,6 +277,7 @@ public sealed class StaffController : BaseController<Staff>
     /// <param name="file">CSV file with staff data</param>
     /// <returns>Validation results</returns>
     [HttpPost("import/csv/validate")]
+    [Authorize(Policy = "staff:import")]
     public async Task<IActionResult> ValidateStaffImport(IFormFile? file)
     {
         try
@@ -288,4 +312,77 @@ public sealed class StaffController : BaseController<Staff>
             return HandleError(ex);
         }
     }
+
+    /// <summary>
+    /// Link a User account to a Staff record
+    /// Allows HR Managers to grant system access to staff members
+    /// </summary>
+    /// <param name="staffId">Staff ID to link user to</param>
+    /// <param name="request">Request containing UserId to link</param>
+    [HttpPost("{staffId:guid}/assign-user")]
+    [Authorize(Policy = "staff:assign_user")]
+    public async Task<IActionResult> AssignUserToStaff(Guid staffId, [FromBody] AssignUserRequest request)
+    {
+        try
+        {
+            // Validate staff exists
+            var staff = await _db.Staff.FindAsync(staffId);
+            if (staff is null)
+            {
+                return NotFound(new { error = "Staff not found" });
+            }
+
+            // Validate user exists
+            var user = await _db.Users.FindAsync(request.UserId);
+            if (user is null)
+            {
+                return NotFound(new { error = "User not found" });
+            }
+
+            // Check if user already linked to another staff
+            var existingLink = await _db.Staff.AnyAsync(s => s.UserId == request.UserId && s.StaffId != staffId);
+            if (existingLink)
+            {
+                return Conflict(new { error = "User already linked to a different staff record" });
+            }
+
+            // Link user to staff
+            staff.UserId = request.UserId;
+            staff.UpdatedAt = DateTime.UtcNow;
+            staff.UpdatedBy = GetUserId();
+
+            await _db.SaveChangesAsync();
+
+            Logger.LogInformation("User {UserId} linked to Staff {StaffId} by {PerformedBy}", 
+                request.UserId, staffId, GetUserId());
+
+            return Ok(new 
+            { 
+                success = true,
+                message = "User successfully linked to staff record",
+                staffId = staff.StaffId,
+                userId = staff.UserId
+            });
+        }
+        catch (Exception ex)
+        {
+            return HandleError(ex);
+        }
+    }
+
+    /// <summary>
+    /// Get the linked Staff ID for the current authenticated user
+    /// </summary>
+    private async Task<Guid?> GetLinkedStaffIdAsync()
+    {
+        var userId = GetUserId();
+        if (!userId.HasValue) return null;
+
+        var staff = await _db.Staff
+            .FirstOrDefaultAsync(s => s.UserId == userId.Value);
+        return staff?.StaffId;
+    }
 }
+
+public sealed record AssignUserRequest(Guid UserId);
+

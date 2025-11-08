@@ -205,6 +205,7 @@ public class PunchClockDbContext : DbContext
             entity.Property(e => e.TerminationDate).HasColumnName("termination_date");
             entity.Property(e => e.IsActive).HasColumnName("is_active").HasDefaultValue(true);
             entity.Property(e => e.EnrollmentStatus).HasColumnName("enrollment_status").HasMaxLength(20).HasDefaultValue("PENDING");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
             entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
             entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
             entity.Property(e => e.CreatedBy).HasColumnName("created_by");
@@ -212,6 +213,7 @@ public class PunchClockDbContext : DbContext
             entity.HasOne(e => e.Department).WithMany(d => d.StaffMembers).HasForeignKey(e => e.DepartmentId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(e => e.Location).WithMany(l => l.StaffMembers).HasForeignKey(e => e.LocationId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(e => e.Shift).WithMany(s => s.StaffMembers).HasForeignKey(e => e.ShiftId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.SetNull);
             entity.HasIndex(e => e.EmployeeId).IsUnique();
             entity.HasIndex(e => e.BadgeNumber).IsUnique();
             entity.HasIndex(e => e.Email).IsUnique();

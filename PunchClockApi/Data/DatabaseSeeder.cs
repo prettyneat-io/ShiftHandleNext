@@ -49,57 +49,110 @@ public class DatabaseSeeder
     {
         _logger.LogInformation("Seeding users, roles, and permissions...");
 
-        // Create permissions
+        // Create comprehensive permissions following resource:action naming convention
         var permissions = new List<Permission>
         {
+            // Staff permissions
             new() { PermissionId = Guid.NewGuid(), PermissionName = "View Staff", Resource = "staff", Action = "read", CreatedAt = DateTime.UtcNow },
             new() { PermissionId = Guid.NewGuid(), PermissionName = "Create Staff", Resource = "staff", Action = "create", CreatedAt = DateTime.UtcNow },
             new() { PermissionId = Guid.NewGuid(), PermissionName = "Update Staff", Resource = "staff", Action = "update", CreatedAt = DateTime.UtcNow },
             new() { PermissionId = Guid.NewGuid(), PermissionName = "Delete Staff", Resource = "staff", Action = "delete", CreatedAt = DateTime.UtcNow },
+            new() { PermissionId = Guid.NewGuid(), PermissionName = "Assign User to Staff", Resource = "staff", Action = "assign_user", CreatedAt = DateTime.UtcNow },
+            new() { PermissionId = Guid.NewGuid(), PermissionName = "Import Staff", Resource = "staff", Action = "import", CreatedAt = DateTime.UtcNow },
+            new() { PermissionId = Guid.NewGuid(), PermissionName = "Export Staff", Resource = "staff", Action = "export", CreatedAt = DateTime.UtcNow },
+            
+            // Users permissions
+            new() { PermissionId = Guid.NewGuid(), PermissionName = "View Users", Resource = "users", Action = "read", CreatedAt = DateTime.UtcNow },
+            new() { PermissionId = Guid.NewGuid(), PermissionName = "Create Users", Resource = "users", Action = "create", CreatedAt = DateTime.UtcNow },
+            new() { PermissionId = Guid.NewGuid(), PermissionName = "Update Users", Resource = "users", Action = "update", CreatedAt = DateTime.UtcNow },
+            new() { PermissionId = Guid.NewGuid(), PermissionName = "Delete Users", Resource = "users", Action = "delete", CreatedAt = DateTime.UtcNow },
+            new() { PermissionId = Guid.NewGuid(), PermissionName = "Assign Roles", Resource = "users", Action = "assign_roles", CreatedAt = DateTime.UtcNow },
+            new() { PermissionId = Guid.NewGuid(), PermissionName = "Assign Admin Role", Resource = "users", Action = "assign_admin_role", CreatedAt = DateTime.UtcNow },
+            
+            // Devices permissions
             new() { PermissionId = Guid.NewGuid(), PermissionName = "View Devices", Resource = "devices", Action = "read", CreatedAt = DateTime.UtcNow },
-            new() { PermissionId = Guid.NewGuid(), PermissionName = "Manage Devices", Resource = "devices", Action = "manage", CreatedAt = DateTime.UtcNow },
+            new() { PermissionId = Guid.NewGuid(), PermissionName = "Create Devices", Resource = "devices", Action = "create", CreatedAt = DateTime.UtcNow },
+            new() { PermissionId = Guid.NewGuid(), PermissionName = "Update Devices", Resource = "devices", Action = "update", CreatedAt = DateTime.UtcNow },
+            new() { PermissionId = Guid.NewGuid(), PermissionName = "Delete Devices", Resource = "devices", Action = "delete", CreatedAt = DateTime.UtcNow },
+            new() { PermissionId = Guid.NewGuid(), PermissionName = "Enroll Staff on Device", Resource = "devices", Action = "enroll", CreatedAt = DateTime.UtcNow },
+            new() { PermissionId = Guid.NewGuid(), PermissionName = "Sync Device", Resource = "devices", Action = "sync", CreatedAt = DateTime.UtcNow },
+            new() { PermissionId = Guid.NewGuid(), PermissionName = "Self-Enroll on Device", Resource = "devices", Action = "self_enroll", CreatedAt = DateTime.UtcNow },
+            
+            // Attendance permissions
             new() { PermissionId = Guid.NewGuid(), PermissionName = "View Attendance", Resource = "attendance", Action = "read", CreatedAt = DateTime.UtcNow },
-            new() { PermissionId = Guid.NewGuid(), PermissionName = "Export Attendance", Resource = "attendance", Action = "export", CreatedAt = DateTime.UtcNow }
+            new() { PermissionId = Guid.NewGuid(), PermissionName = "Update Attendance", Resource = "attendance", Action = "update", CreatedAt = DateTime.UtcNow },
+            new() { PermissionId = Guid.NewGuid(), PermissionName = "Delete Attendance", Resource = "attendance", Action = "delete", CreatedAt = DateTime.UtcNow },
+            new() { PermissionId = Guid.NewGuid(), PermissionName = "Export Attendance", Resource = "attendance", Action = "export", CreatedAt = DateTime.UtcNow },
+            new() { PermissionId = Guid.NewGuid(), PermissionName = "Process Attendance", Resource = "attendance", Action = "process", CreatedAt = DateTime.UtcNow },
+            new() { PermissionId = Guid.NewGuid(), PermissionName = "View Own Attendance", Resource = "attendance", Action = "view_own", CreatedAt = DateTime.UtcNow },
+            
+            // Reports permissions
+            new() { PermissionId = Guid.NewGuid(), PermissionName = "Generate Reports", Resource = "reports", Action = "generate", CreatedAt = DateTime.UtcNow },
+            new() { PermissionId = Guid.NewGuid(), PermissionName = "Export Reports", Resource = "reports", Action = "export", CreatedAt = DateTime.UtcNow },
+            new() { PermissionId = Guid.NewGuid(), PermissionName = "Schedule Reports", Resource = "reports", Action = "schedule", CreatedAt = DateTime.UtcNow },
+            
+            // Leave permissions
+            new() { PermissionId = Guid.NewGuid(), PermissionName = "View Leave", Resource = "leave", Action = "read", CreatedAt = DateTime.UtcNow },
+            new() { PermissionId = Guid.NewGuid(), PermissionName = "Create Leave", Resource = "leave", Action = "create", CreatedAt = DateTime.UtcNow },
+            new() { PermissionId = Guid.NewGuid(), PermissionName = "Update Leave", Resource = "leave", Action = "update", CreatedAt = DateTime.UtcNow },
+            new() { PermissionId = Guid.NewGuid(), PermissionName = "Approve Leave", Resource = "leave", Action = "approve", CreatedAt = DateTime.UtcNow },
+            new() { PermissionId = Guid.NewGuid(), PermissionName = "Reject Leave", Resource = "leave", Action = "reject", CreatedAt = DateTime.UtcNow },
+            new() { PermissionId = Guid.NewGuid(), PermissionName = "Cancel Leave", Resource = "leave", Action = "cancel", CreatedAt = DateTime.UtcNow },
+            new() { PermissionId = Guid.NewGuid(), PermissionName = "Request Own Leave", Resource = "leave", Action = "request_own", CreatedAt = DateTime.UtcNow },
+            new() { PermissionId = Guid.NewGuid(), PermissionName = "View Own Leave", Resource = "leave", Action = "view_own", CreatedAt = DateTime.UtcNow },
+            
+            // Organization permissions
+            new() { PermissionId = Guid.NewGuid(), PermissionName = "Manage Departments", Resource = "departments", Action = "manage", CreatedAt = DateTime.UtcNow },
+            new() { PermissionId = Guid.NewGuid(), PermissionName = "Manage Locations", Resource = "locations", Action = "manage", CreatedAt = DateTime.UtcNow },
+            new() { PermissionId = Guid.NewGuid(), PermissionName = "Manage Shifts", Resource = "shifts", Action = "manage", CreatedAt = DateTime.UtcNow },
+            
+            // Policies permissions
+            new() { PermissionId = Guid.NewGuid(), PermissionName = "Manage Overtime Policy", Resource = "overtime", Action = "manage", CreatedAt = DateTime.UtcNow },
+            
+            // System permissions (Admin only)
+            new() { PermissionId = Guid.NewGuid(), PermissionName = "Manage System Settings", Resource = "system", Action = "settings", CreatedAt = DateTime.UtcNow },
+            new() { PermissionId = Guid.NewGuid(), PermissionName = "View Audit Logs", Resource = "system", Action = "audit", CreatedAt = DateTime.UtcNow },
+            new() { PermissionId = Guid.NewGuid(), PermissionName = "Manage Background Jobs", Resource = "system", Action = "jobs", CreatedAt = DateTime.UtcNow }
         };
 
         await _context.Permissions.AddRangeAsync(permissions);
         await _context.SaveChangesAsync();
 
-        // Create roles
+        // Create three-tier role system
         var adminRole = new Role
         {
             RoleId = Guid.NewGuid(),
             RoleName = "Admin",
-            RoleDescription = "System administrator with full access",
+            RoleDescription = "System administrator with full access to all resources",
             IsSystemRole = true,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
 
-        var userRole = new Role
+        var hrManagerRole = new Role
         {
             RoleId = Guid.NewGuid(),
-            RoleName = "User",
-            RoleDescription = "Standard user with limited access",
+            RoleName = "HR Manager",
+            RoleDescription = "HR Manager with access to all resources except system settings and Admin role assignment",
             IsSystemRole = true,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
 
-        var managerRole = new Role
+        var staffRole = new Role
         {
             RoleId = Guid.NewGuid(),
-            RoleName = "Manager",
-            RoleDescription = "Manager with elevated permissions",
+            RoleName = "Staff",
+            RoleDescription = "Staff member with limited access to self-service features",
             IsSystemRole = true,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
 
-        await _context.Roles.AddRangeAsync(adminRole, userRole, managerRole);
+        await _context.Roles.AddRangeAsync(adminRole, hrManagerRole, staffRole);
         await _context.SaveChangesAsync();
 
-        // Assign all permissions to Admin role
+        // Assign ALL permissions to Admin role
         var adminRolePermissions = permissions.Select(p => new RolePermission
         {
             RoleId = adminRole.RoleId,
@@ -107,7 +160,32 @@ public class DatabaseSeeder
             GrantedAt = DateTime.UtcNow
         }).ToList();
 
+        // Assign HR Manager permissions (all except system:settings, system:jobs, and users:assign_admin_role)
+        var hrManagerPermissionsList = permissions
+            .Where(p => !(p.Resource == "system" && (p.Action == "settings" || p.Action == "jobs")) 
+                     && !(p.Resource == "users" && p.Action == "assign_admin_role"))
+            .Select(p => new RolePermission
+            {
+                RoleId = hrManagerRole.RoleId,
+                PermissionId = p.PermissionId,
+                GrantedAt = DateTime.UtcNow
+            }).ToList();
+
+        // Assign Staff permissions (minimal self-service)
+        var staffPermissionsList = permissions
+            .Where(p => (p.Resource == "devices" && p.Action == "self_enroll") ||
+                       (p.Resource == "attendance" && p.Action == "view_own") ||
+                       (p.Resource == "leave" && (p.Action == "request_own" || p.Action == "view_own")))
+            .Select(p => new RolePermission
+            {
+                RoleId = staffRole.RoleId,
+                PermissionId = p.PermissionId,
+                GrantedAt = DateTime.UtcNow
+            }).ToList();
+
         await _context.RolePermissions.AddRangeAsync(adminRolePermissions);
+        await _context.RolePermissions.AddRangeAsync(hrManagerPermissionsList);
+        await _context.RolePermissions.AddRangeAsync(staffPermissionsList);
         await _context.SaveChangesAsync();
 
         // Create default admin user (password: "admin123")
@@ -125,44 +203,56 @@ public class DatabaseSeeder
             UpdatedAt = DateTime.UtcNow
         };
 
-        // Create default regular user (password: "user123")
-        var regularUser = new User
+        // Create default HR Manager user (password: "hr123")
+        var hrManagerUser = new User
         {
             UserId = Guid.NewGuid(),
-            Username = "user",
-            Email = "user@punchclock.local",
-            FirstName = "Test",
-            LastName = "User",
-            PasswordHash = HashPassword("user123"),
+            Username = "hrmanager",
+            Email = "hr@punchclock.local",
+            FirstName = "HR",
+            LastName = "Manager",
+            PasswordHash = HashPassword("hr123"),
             IsActive = true,
             IsVerified = true,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
 
-        await _context.Users.AddRangeAsync(adminUser, regularUser);
+        // Create default staff user (password: "staff123")
+        var staffUser = new User
+        {
+            UserId = Guid.NewGuid(),
+            Username = "staff",
+            Email = "staff@punchclock.local",
+            FirstName = "Test",
+            LastName = "Staff",
+            PasswordHash = HashPassword("staff123"),
+            IsActive = true,
+            IsVerified = true,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        await _context.Users.AddRangeAsync(adminUser, hrManagerUser, staffUser);
         await _context.SaveChangesAsync();
 
         // Assign roles to users
         var userRoles = new List<UserRole>
         {
             new() { UserId = adminUser.UserId, RoleId = adminRole.RoleId, AssignedAt = DateTime.UtcNow },
-            new() { UserId = regularUser.UserId, RoleId = userRole.RoleId, AssignedAt = DateTime.UtcNow }
+            new() { UserId = hrManagerUser.UserId, RoleId = hrManagerRole.RoleId, AssignedAt = DateTime.UtcNow },
+            new() { UserId = staffUser.UserId, RoleId = staffRole.RoleId, AssignedAt = DateTime.UtcNow }
         };
 
         await _context.UserRoles.AddRangeAsync(userRoles);
         await _context.SaveChangesAsync();
 
         _logger.LogInformation("Seeded {UserCount} users, {RoleCount} roles, and {PermissionCount} permissions",
-            2, 3, permissions.Count);
+            3, 3, permissions.Count);
     }
 
-    private static string HashPassword(string password)
-    {
-        using var sha256 = SHA256.Create();
-        var hashedBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(password));
-        return Convert.ToBase64String(hashedBytes);
-    }
+    private static string HashPassword(string password) 
+        => BCrypt.Net.BCrypt.HashPassword(password);
 
     private async Task SeedOrganizationsAsync()
     {

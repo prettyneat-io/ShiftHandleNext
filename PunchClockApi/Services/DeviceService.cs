@@ -648,7 +648,7 @@ public sealed class DeviceService : IDeviceService, IDisposable
         }
     }
 
-    public async Task<OperationResponse> AddUserToDeviceAsync(Device device, Staff staff)
+    public async Task<OperationResponse> AddUserToDeviceAsync(Device device, Staff staff, bool canBeAdmin = true)
     {
         try
         {
@@ -671,10 +671,16 @@ public sealed class DeviceService : IDeviceService, IDisposable
 
             int deviceUserId = enrollment?.DeviceUserId ?? await GetNextDeviceUserId(device.DeviceId);
 
+            // Determine privilege level based on canBeAdmin flag
+            // Staff self-enrollment always uses User privilege, never Admin
+            var privilege = canBeAdmin 
+                ? PyZKClient.Privilege.User  // Default for HR/Admin enrolling users
+                : PyZKClient.Privilege.User;  // Staff self-enrollment - explicitly User
+
             var result = await Task.Run(() => client.AddUser(
                 uid: deviceUserId,
                 name: $"{staff.FirstName} {staff.LastName}",
-                privilege: PyZKClient.Privilege.User,
+                privilege: privilege,
                 userId: staff.EmployeeId
             ));
 
@@ -785,7 +791,7 @@ public sealed class DeviceService : IDeviceService, IDisposable
         }
     }
 
-    public async Task<OperationResponse> EnrollUserFingerprintAsync(Device device, Staff staff, int fingerId = 0)
+    public async Task<OperationResponse> EnrollUserFingerprintAsync(Device device, Staff staff, int fingerId = 0, bool canBeAdmin = true)
     {
         try
         {
@@ -809,8 +815,8 @@ public sealed class DeviceService : IDeviceService, IDisposable
             // User must exist on device before fingerprint enrollment
             if (enrollment == null)
             {
-                // Add user to device first
-                var addUserResult = await AddUserToDeviceAsync(device, staff);
+                // Add user to device first with appropriate privilege level
+                var addUserResult = await AddUserToDeviceAsync(device, staff, canBeAdmin);
                 if (!addUserResult.Success)
                 {
                     return new OperationResponse
