@@ -1,0 +1,24 @@
+{
+  "name": "chra",
+  "private": true,
+  "version": "1.0.0",
+ 
+  "scripts": {
+    "clean": "find . -type d ( -name \"node_modules\" -o -name \".nuxt\" -o -name \".output\" ) -exec rm -rf {} +",
+    "dev:shared": "pnpm --filter shared dev",
+    "dev:abc": "pnpm --filter ab-cultivation dev",
+    "dev:abc-shared": "pnpm run dev:shared && pnpm --filter ab-cultivation dev",
+    "dev:abd": "pnpm --filter ab-distribution dev",
+    "dev:abd-shared": "pnpm run dev:shared && pnpm --filter ab-distribution dev",
+    "generate-llm": "node scripts/generate-llm.cjs --paths=./apps,./layers --output-file=debug.txt"
+  },
+  "workspaces": [
+    "apps/*",
+    "layers/*"
+  ],
+  "devDependencies": {
+    "eslint": "^8.0.0",
+    "minimist": "^1.2.8",
+    "vite": "^6.1.0"
+  }
+}

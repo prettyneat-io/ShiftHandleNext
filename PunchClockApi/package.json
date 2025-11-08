@@ -1,0 +1,17 @@
+{
+  "name": "punchclock-api-client-generator",
+  "version": "1.0.0",
+  "description": "TypeScript client generator for PunchClock API",
+  "scripts": {
+    "generate:nswag": "nswag run nswag-simple.json",
+    "generate:openapi": "openapi-generator-cli generate -i swagger.json -g typescript-fetch -o ./generated/openapi",
+    "generate:kiota": "kiota generate -l typescript -d swagger.json -c PunchClockApiClient -o ./generated/kiota",
+    "generate:spec": "nswag aspnetcore2openapi /project:PunchClockApi.csproj /output:swagger.json",
+    "generate:all": "npm run generate:spec && npm run generate:nswag && npm run generate:openapi && npm run generate:kiota",
+    "install-tools": "npm install -g @openapitools/openapi-generator-cli && dotnet tool install -g NSwag.ConsoleCore && dotnet tool install -g Microsoft.OpenApi.Kiota"
+  },
+  "devDependencies": {
+    "@openapitools/openapi-generator-cli": "^2.7.0",
+    "typescript": "^5.0.0"
+  }
+}

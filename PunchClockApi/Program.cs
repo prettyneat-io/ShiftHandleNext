@@ -35,6 +35,19 @@ builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new() { Title = "Punch Clock API", Version = "v1" });
     
+    // Configure operation IDs to use controller + method names
+    options.CustomOperationIds(apiDesc =>
+    {
+        var actionDescriptor = apiDesc.ActionDescriptor as Microsoft.AspNetCore.Mvc.Controllers.ControllerActionDescriptor;
+        if (actionDescriptor != null)
+        {
+            var controllerName = actionDescriptor.ControllerName;
+            var actionName = actionDescriptor.ActionName;
+            return $"{actionName}{controllerName}";
+        }
+        return null;
+    });
+    
     // Add JWT authentication to Swagger
     options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {

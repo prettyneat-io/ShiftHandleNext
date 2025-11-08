@@ -1,0 +1,29 @@
+@font-face {
+  font-family: 'Cyberpunk';
+  src:
+    url('/fonts/Cyberpunk.woff2') format('woff2'),
+    url('/fonts/Cyberpunk.woff') format('woff');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Inter';
+  src:
+    url('/fonts/Inter.woff2') format('woff2'),
+    url('/fonts/Inter.woff') format('woff');
+}
+
+@font-face {
+  font-family: 'Righteous';
+  src:
+    url('/fonts/Righteous.woff2') format('woff2'),
+    url('/fonts/Righteous.woff') format('woff');
+}
+
+@font-face {
+  font-family: 'Pacifico';
+  src:
+    url('/fonts/Pacifico.woff2') format('woff2'),
+    url('/fonts/Pacifico.woff') format('woff');
+}

@@ -1,0 +1,54 @@
+{
+  "runtime": "Net90",
+  "documentGenerator": {
+    "fromDocument": {
+      "url": "http://localhost:5187/swagger/v1/swagger.json",
+      "output": null
+    }
+  },
+  "codeGenerators": {
+    "openApiToTypeScriptClient": {
+      "className": "PunchClockApiClient",
+      "typeScriptVersion": 5.0,
+      "template": "Fetch",
+      "promiseType": "Promise",
+      "dateTimeType": "Date",
+      "generateClientClasses": true,
+      "generateOptionalParameters": true,
+      "exportTypes": true,
+      "wrapDtoExceptions": true,
+      "exceptionClass": "ApiException",
+      "generateDefaultValues": true,
+      "useAbortSignal": true,
+      "output": "./generated/punch-clock-api.ts",
+      "moduleName": "",
+      "namespace": "",
+      "generateClientInterfaces": true,
+      "generateResponseClasses": false,
+      "responseClass": "SwaggerResponse",
+      "protectedMethods": [],
+      "configurationClass": "",
+      "useGetBaseUrlMethod": false,
+      "baseUrlTokenName": "API_BASE_URL",
+      "queryNullValue": "",
+      "inlineNamedDictionaries": false,
+      "inlineNamedAny": false,
+      "includeHttpContext": false,
+      "treatDefinitionsAsTypes": false,
+      "nullValue": "Undefined",
+      "generateDtoTypes": true,
+      "operationGenerationMode": "MultipleClientsFromOperationId",
+      "markOptionalProperties": true,
+      "generateCloneMethod": false,
+      "typeStyle": "Interface",
+      "enumStyle": "Enum",
+      "useLeafType": false,
+      "classTypes": [],
+      "extendedClasses": [],
+      "extensionCode": "",
+      "generateConstructorInterface": true,
+      "convertConstructorInterfaceData": false,
+      "importRequiredTypes": true
+    }
+  }
+}

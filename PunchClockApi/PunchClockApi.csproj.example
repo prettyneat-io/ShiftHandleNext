@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!-- Your existing PropertyGroup -->
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <!-- other settings -->
+  </PropertyGroup>
+
+  <!-- Add NSwag MSBuild integration -->
+  <ItemGroup>
+    <PackageReference Include="NSwag.MSBuild" Version="14.0.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <!-- Auto-generate TypeScript client on build -->
+  <Target Name="GenerateTypeScriptClient" BeforeTargets="Build">
+    <Exec Command="nswag run nswag.json" ContinueOnError="false" />
+  </Target>
+
+</Project>

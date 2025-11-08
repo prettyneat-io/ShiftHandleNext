@@ -72,7 +72,22 @@ Use Swagger or send a POST request to `/api/auth/login`:
 
 Copy the `accessToken` from the response and click "Authorize" in Swagger UI, then enter: `Bearer <your-token>`
 
-### 7. (Optional) Test ZK Device Integration
+### 7. Generate TypeScript Client (Optional)
+
+Generate TypeScript client code for frontend integration:
+```bash
+nswag run nswag-fetch.json
+```
+
+This command:
+- Fetches the OpenAPI/Swagger specification from the running API at `http://localhost:5187/swagger/v1/swagger.json`
+- Generates a TypeScript client (`PunchClockApiClient`) using the Fetch API
+- Outputs the generated code to `./generated/punch-clock-api.ts`
+- Includes strongly-typed interfaces for all API endpoints, request/response models, and error handling
+
+**Note:** The API must be running (step 4) before generating the TypeScript client.
+
+### 8. (Optional) Test ZK Device Integration
 
 Start the ZK device simulator in a separate terminal:
 ```bash
@@ -108,6 +123,11 @@ PunchClockApi/
 │   ├── pyzk_wrapper.py             # Python wrapper for ZK devices
 │   ├── zk_simulator.py             # ZK device simulator for testing
 │   └── zk/                         # PyZK library (device protocol)
+├── generated/
+│   ├── punch-clock-api.ts          # Generated TypeScript client (via NSwag)
+│   ├── README.md                   # Generated client documentation
+│   ├── usage-examples.ts           # TypeScript client usage examples
+│   └── working-examples.ts         # Working code examples
 ├── Data/
 │   ├── PunchClockDbContext.cs      # EF Core DbContext with fluent configuration
 │   └── DatabaseSeeder.cs           # Development data seeding
@@ -211,6 +231,44 @@ dotnet ef migrations remove
 ### Generate SQL Script
 ```bash
 dotnet ef migrations script
+```
+
+## TypeScript Client Generation
+
+The project includes NSwag configuration to automatically generate a TypeScript client from the API's Swagger specification.
+
+### Generate TypeScript Client
+```bash
+nswag run nswag-fetch.json
+```
+
+### Generated Files
+- `generated/punch-clock-api.ts` - Main TypeScript client with strongly-typed interfaces
+- `generated/README.md` - Documentation for the generated client
+- `generated/usage-examples.ts` - Example usage patterns
+- `generated/working-examples.ts` - Working code examples
+
+### Configuration
+The generation is configured in `nswag-fetch.json`:
+- **Runtime:** .NET 9.0
+- **Template:** Fetch API (modern, Promise-based)
+- **TypeScript Version:** 5.0
+- **Features:** Client classes, interfaces, optional parameters, abort signals, exception handling
+
+### Frontend Integration
+The generated client provides:
+- Strongly-typed request/response models
+- Promise-based async operations
+- Built-in error handling with `ApiException`
+- Support for AbortSignal (request cancellation)
+- TypeScript 5.0 compatibility
+
+**Example Usage:**
+```typescript
+import { PunchClockApiClient } from './generated/punch-clock-api';
+
+const client = new PunchClockApiClient('http://localhost:5187');
+const staff = await client.staffGET();
 ```
 
 ## Docker Commands
