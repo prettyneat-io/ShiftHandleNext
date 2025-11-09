@@ -87,7 +87,7 @@ public abstract class BaseController<TEntity> : ControllerBase where TEntity : c
     {
         foreach (var include in includes)
         {
-            var path = include.Key;
+            var path = NormalizePropertyPath<T>(include.Key);
             
             // Handle nested includes
             if (include.Value is IDictionary<string, object> nested && nested.TryGetValue("include", out var nestedIncludes))
@@ -96,7 +96,7 @@ public abstract class BaseController<TEntity> : ControllerBase where TEntity : c
                 {
                     foreach (var nestedInclude in nestedDict)
                     {
-                        var nestedPath = $"{path}.{nestedInclude.Key}";
+                        var nestedPath = $"{path}.{NormalizePropertyName(nestedInclude.Key)}";
                         query = query.Include(nestedPath);
                     }
                 }
@@ -108,6 +108,53 @@ public abstract class BaseController<TEntity> : ControllerBase where TEntity : c
         }
 
         return query;
+    }
+
+    /// <summary>
+    /// Normalizes a property path to match actual property casing (e.g., "shift" -> "Shift")
+    /// </summary>
+    private static string NormalizePropertyPath<T>(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return path;
+        
+        var parts = path.Split('.');
+        var normalizedParts = new List<string>();
+        var currentType = typeof(T);
+        
+        foreach (var part in parts)
+        {
+            var normalizedPart = NormalizePropertyNameForType(currentType, part);
+            normalizedParts.Add(normalizedPart);
+            
+            // Try to get the property type for the next iteration
+            var property = currentType.GetProperty(normalizedPart, BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance);
+            if (property != null)
+            {
+                currentType = property.PropertyType;
+            }
+        }
+        
+        return string.Join(".", normalizedParts);
+    }
+
+    /// <summary>
+    /// Normalizes a single property name to match actual casing (e.g., "shift" -> "Shift")
+    /// </summary>
+    private static string NormalizePropertyName(string propertyName)
+    {
+        if (string.IsNullOrWhiteSpace(propertyName)) return propertyName;
+        return char.ToUpper(propertyName[0]) + propertyName.Substring(1);
+    }
+
+    /// <summary>
+    /// Normalizes a property name for a specific type using reflection
+    /// </summary>
+    private static string NormalizePropertyNameForType(Type type, string propertyName)
+    {
+        if (string.IsNullOrWhiteSpace(propertyName)) return propertyName;
+        
+        var property = type.GetProperty(propertyName, BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance);
+        return property?.Name ?? NormalizePropertyName(propertyName);
     }
 
     private static IQueryable<T> ApplyFilters<T>(IQueryable<T> query, IDictionary<string, object?> filters) where T : class

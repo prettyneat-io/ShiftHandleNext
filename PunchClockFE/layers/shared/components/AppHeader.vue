@@ -117,7 +117,7 @@
               <MenuButton class="relative flex rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:ring-2 focus-visible:ring-primary/50">
                 <span class="absolute -inset-1.5" />
                 <span class="sr-only">Open user menu</span>
-                <AppAvatar :name="user?.name || 'User'" size="small" />
+                <AppAvatar :name="displayName" size="small" />
               </MenuButton>
 
               <transition enter-active-class="transition ease-out duration-100" enter-from-class="transform opacity-0 scale-95" enter-to-class="transform opacity-100 scale-100" leave-active-class="transition ease-in duration-75" leave-from-class="transform opacity-100 scale-100" leave-to-class="transform opacity-0 scale-95">
@@ -189,10 +189,10 @@
           <template v-if="isAuthenticated && user">
             <div class="flex items-center px-4">
               <div class="shrink-0">
-                <AppAvatar :name="user?.name || 'User'" size="medium" />
+                <AppAvatar :name="displayName" size="medium" />
               </div>
               <div class="ml-3">
-                <div class="text-base font-medium text-neutral-dark dark:text-text-dark">{{ user.name }}</div>
+                <div class="text-base font-medium text-neutral-dark dark:text-text-dark">{{ displayName }}</div>
                 <div class="text-sm font-medium text-neutral-mid dark:text-text-dark-muted">{{ user.email }}</div>
               </div>
               <button type="button" class="relative ml-auto shrink-0 rounded-full p-1 text-secondary hover:text-primary focus:outline-2 focus:ring-2 focus:ring-primary/30 dark:text-text-dark-muted dark:hover:text-primary-alt">
@@ -227,6 +227,18 @@ import { type ThemeKey } from '../theme.config'
 const authStore = useAuthStore()
 const isAuthenticated = computed(() => authStore.isAuthenticated)
 const user = computed(() => authStore.user)
+
+// Compute display name from firstName and lastName, fallback to username or generic name
+const displayName = computed(() => {
+  if (!user.value) {
+    return 'User'
+  }
+
+  const first = (user.value as any).firstName?.trim() ?? ''
+  const last = (user.value as any).lastName?.trim() ?? ''
+  const fullName = [first, last].filter(Boolean).join(' ')
+  return fullName || (user.value as any).username || user.value.name || 'User'
+})
 
 const { availableThemes, currentThemeKey, currentTheme: activeTheme, setTheme, initialize: ensureTheme } = useThemeManager()
 ensureTheme()

@@ -70,7 +70,7 @@ import { toTypedSchema } from '@vee-validate/yup';
 import { useNotificationStore } from '../../stores/notification';
 import AppModal from '../AppModal.vue';
 import AppNestedBreadcrumbs from '../AppNestedBreadcrumbs.vue';
-import { fetchColumnsForEndpoint } from '../../data/form-columns-dynamic';
+import { fetchColumnsForEndpoint } from '../../utils/form-columns-dynamic';
 import { useRefreshStore } from '../../stores/refresh';
 import { generateYupSchema } from '../../utils/yup-schema-generator';
 

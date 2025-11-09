@@ -20,7 +20,7 @@
       "exceptionClass": "ApiException",
       "generateDefaultValues": true,
       "useAbortSignal": true,
-      "output": "./generated/punch-clock-api.ts",
+      "output": "../PunchClockFE/DataRequestModels/punch-clock-api.ts",
       "moduleName": "",
       "namespace": "",
       "generateClientInterfaces": true,

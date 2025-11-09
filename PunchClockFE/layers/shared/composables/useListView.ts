@@ -204,12 +204,13 @@ export function useListView(props: {
     try {
       loading.value = true;
       error.value = '';
-      const res = await $fetch<{ data: any[], meta: { total: number } }>(
+      const res = await $fetch<{ data: any[], total: number, meta?: { total: number } }>(
         `/api/${props.endpoint}`,
         { params: buildQueryParams() },
       );
       rows.value = res.data;
-      totalItems.value = res.meta.total;
+      // Support both response formats: res.total (backend) or res.meta.total (alternative)
+      totalItems.value = res.total ?? res.meta?.total ?? 0;
     } catch (e: any) {
       const errorMessage = e.data?.error || 'Failed to load data';
       error.value = errorMessage;

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<RunSettings>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="XPlat code coverage">
+        <Configuration>
+          <Format>cobertura,opencover</Format>
+          <ExcludeByFile>
+            **/Migrations/*.cs
+            **/Migrations/*.Designer.cs
+            **/PunchClockDbContextModelSnapshot.cs
+          </ExcludeByFile>
+          <ExcludeByAttribute>
+            Obsolete
+            GeneratedCodeAttribute
+            CompilerGeneratedAttribute
+            ExcludeFromCodeCoverageAttribute
+          </ExcludeByAttribute>
+          <Include>
+            [PunchClockApi]*
+          </Include>
+          <Exclude>
+            [PunchClockApi]PunchClockApi.Migrations.*
+          </Exclude>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>

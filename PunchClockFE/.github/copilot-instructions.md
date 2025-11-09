@@ -8,13 +8,13 @@ Nuxt 3 monorepo: `layers/shared/` (reusable) + `apps/punch-clock/` (main app). T
 1. **API Client**: NEVER edit `apps/punch-clock/lib/punch-clock-api.ts` (auto-generated). Use `usePunchClockApi()` composable.
 2. **Components**: Shared = `App*` prefix in `layers/shared/components/`. App-specific = no prefix in `apps/punch-clock/components/`.
 3. **Layers**: Check `layers/shared/` first before creating new code. Reusable → shared, specific → app.
-4. **Forms**: Use `DynamicCreateForm` + schemas in `useFormSchemas.ts` + `validation-meta.json`.
+4. **Forms**: Use `DynamicCreateForm` + entity-specific column composables (e.g., `useStaffColumns`). Column definitions are type-based, derived from API types.
 5. **Types**: Everything typed. No `any`. Props, emits, API responses all typed.
 
 ## Key Files
 - **API**: `apps/punch-clock/lib/punch-clock-api.ts` (generated), `composables/usePunchClockApi.ts`
 - **Stores**: `layers/shared/stores/{auth,loading,notification,formCache}.ts`
-- **Forms**: `layers/shared/composables/useFormSchemas.ts`, `utils/validation-meta.json`
+- **Forms**: Entity-specific column composables (e.g., `composables/useStaffColumns.ts`)
 - **Auth**: `apps/punch-clock/middleware/auth.global.ts` (protects all routes except login/signup/forgot-password)
 
 ## Patterns
@@ -60,7 +60,7 @@ pnpm run clean    # Remove node_modules/.nuxt/.output
 ## Common Tasks
 - **New page**: `apps/punch-clock/pages/name.vue`, add to `config/navigation.ts` if needed
 - **New component**: Determine shared vs app-specific, follow naming, use TypeScript
-- **New form**: Use `DynamicCreateForm` or add schema to `useFormSchemas.ts`
+- **New form**: Use `DynamicCreateForm` with entity-specific column composable (pattern: `useEntityColumns`)
 - **New store**: `defineStore` with setup syntax, export composable
 
 ## DO / DON'T

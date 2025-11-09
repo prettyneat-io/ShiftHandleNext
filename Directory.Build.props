@@ -1,0 +1,7 @@
+<Project>
+  <PropertyGroup>
+    <!-- Global code coverage exclusions -->
+    <CoverletExcludeByFile>**/Migrations/*.cs;**/Migrations/*.Designer.cs;**/PunchClockDbContextModelSnapshot.cs</CoverletExcludeByFile>
+    <CoverletExclude>[PunchClockApi]PunchClockApi.Migrations.*</CoverletExclude>
+  </PropertyGroup>
+</Project>
