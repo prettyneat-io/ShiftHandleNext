@@ -1,0 +1,22 @@
+{
+  "name": "punch-clock-fe",
+  "private": true,
+  "version": "1.0.0",
+ 
+  "scripts": {
+    "clean": "find . -type d \\( -name \"node_modules\" -o -name \".nuxt\" -o -name \".output\" \\) -exec rm -rf {} +",
+    "dev": "cd apps/punch-clock && pnpm dev",
+    "build": "cd apps/punch-clock && pnpm build",
+    "preview": "cd apps/punch-clock && pnpm preview",
+    "install:all": "pnpm install"
+  },
+  "workspaces": [
+    "apps/*",
+    "layers/*"
+  ],
+  "devDependencies": {
+    "eslint": "^8.0.0",
+    "minimist": "^1.2.8",
+    "vite": "^6.1.0"
+  }
+}
